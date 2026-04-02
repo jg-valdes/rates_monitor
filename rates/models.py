@@ -28,7 +28,7 @@ class UserConfig(models.Model):
     alert_on_rate_above = models.FloatField(null=True, blank=True)
 
     class Meta:
-        verbose_name = "Configuration"
+        verbose_name = "Configuración"
 
     def save(self, *args, **kwargs):
         self.pk = 1

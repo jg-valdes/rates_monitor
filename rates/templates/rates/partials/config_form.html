@@ -1,10 +1,10 @@
 {% if saved %}
 <div class="mb-4 text-emerald-400 text-sm flex items-center gap-2">
-  <span>✓</span> Settings saved successfully.
+  <span>✓</span> Configuración guardada correctamente.
 </div>
 {% endif %}
 
-<h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">Configuration</h2>
+<h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">Configuración</h2>
 
 <form
   method="post"
@@ -17,32 +17,32 @@
   <div class="space-y-4 text-sm">
 
     <div>
-      <label class="block text-gray-400 mb-1 text-xs">Monthly Budget (USD)</label>
+      <label class="block text-gray-400 mb-1 text-xs">Presupuesto Mensual (USD)</label>
       <input type="number" name="monthly_usd_budget" value="{{ config.monthly_usd_budget }}"
         step="100" min="0"
         class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white
                focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
     </div>
 
-    <p class="text-xs text-gray-600 uppercase tracking-widest pt-2">Decision Thresholds (%)</p>
+    <p class="text-xs text-gray-600 uppercase tracking-widest pt-2">Umbrales de Decisión (%)</p>
 
     <div class="grid grid-cols-3 gap-2">
       <div>
-        <label class="block text-gray-500 mb-1 text-xs">Strong Buy &gt;</label>
+        <label class="block text-gray-500 mb-1 text-xs">C. Fuerte &gt;</label>
         <input type="number" name="threshold_strong_buy" value="{{ config.threshold_strong_buy }}"
           step="0.5"
           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-sm
                  focus:outline-none focus:border-indigo-500">
       </div>
       <div>
-        <label class="block text-gray-500 mb-1 text-xs">Mod. Buy &gt;</label>
+        <label class="block text-gray-500 mb-1 text-xs">C. Mod. &gt;</label>
         <input type="number" name="threshold_moderate_buy" value="{{ config.threshold_moderate_buy }}"
           step="0.5"
           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-sm
                  focus:outline-none focus:border-indigo-500">
       </div>
       <div>
-        <label class="block text-gray-500 mb-1 text-xs">Do Not Buy &lt;</label>
+        <label class="block text-gray-500 mb-1 text-xs">No Comp. &lt;</label>
         <input type="number" name="threshold_do_not_buy" value="{{ config.threshold_do_not_buy }}"
           step="0.5"
           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-sm
@@ -50,10 +50,10 @@
       </div>
     </div>
 
-    <p class="text-xs text-gray-600 uppercase tracking-widest pt-2">Alerts</p>
+    <p class="text-xs text-gray-600 uppercase tracking-widest pt-2">Alertas</p>
 
     <div>
-      <label class="block text-gray-400 mb-1 text-xs">Webhook URL (Telegram / Discord / n8n)</label>
+      <label class="block text-gray-400 mb-1 text-xs">URL Webhook (Telegram / Discord / n8n)</label>
       <input type="url" name="alert_webhook_url" value="{{ config.alert_webhook_url }}"
         placeholder="https://..."
         class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white
@@ -62,18 +62,18 @@
 
     <div class="grid grid-cols-2 gap-2">
       <div>
-        <label class="block text-gray-400 mb-1 text-xs">Alert if deviation &gt; (%)</label>
+        <label class="block text-gray-400 mb-1 text-xs">Alerta si desviación &gt; (%)</label>
         <input type="number" name="alert_on_deviation_above"
           value="{{ config.alert_on_deviation_above|default:'' }}" step="0.5"
-          placeholder="e.g. 2.5"
+          placeholder="ej. 2.5"
           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white
                  focus:outline-none focus:border-indigo-500 placeholder-gray-600">
       </div>
       <div>
-        <label class="block text-gray-400 mb-1 text-xs">Alert if rate &gt;</label>
+        <label class="block text-gray-400 mb-1 text-xs">Alerta si cotización &gt;</label>
         <input type="number" name="alert_on_rate_above"
           value="{{ config.alert_on_rate_above|default:'' }}" step="0.01"
-          placeholder="e.g. 6.00"
+          placeholder="ej. 6.00"
           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white
                  focus:outline-none focus:border-indigo-500 placeholder-gray-600">
       </div>
@@ -84,14 +84,14 @@
         {% if config.alert_on_strong_buy %}checked{% endif %}
         class="w-4 h-4 rounded border-gray-600 bg-gray-800 text-indigo-500">
       <label for="chk_strong_buy" class="text-gray-400 text-xs cursor-pointer">
-        Alert when STRONG BUY is triggered
+        Alertar al activarse COMPRA FUERTE
       </label>
     </div>
 
     <button type="submit"
       class="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white
              rounded-lg px-4 py-2.5 font-semibold text-sm transition-colors mt-2">
-      Save Settings
+      Guardar Configuración
     </button>
   </div>
 </form>

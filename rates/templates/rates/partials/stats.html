@@ -1,3 +1,4 @@
+{% load rates_extras %}
 <div id="stats-section"
      hx-get="{% url 'stats_partial' %}"
      hx-trigger="every 300s"
@@ -7,7 +8,7 @@
   {% if indicators %}
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-    {# ── Rate Card ── #}
+    {# ── Tarjeta de Cotización ── #}
     <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
       <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">USD / BRL</p>
       <p class="text-4xl font-black text-white tabular-nums">{{ indicators.current_rate|floatformat:4 }}</p>
@@ -23,32 +24,32 @@
           <span class="text-gray-200 tabular-nums font-mono">{{ indicators.ma90|floatformat:4 }}</span>
         </div>
         <div class="flex justify-between text-gray-400">
-          <span>Deviation</span>
+          <span>Desviación</span>
           <span class="font-semibold tabular-nums
             {% if indicators.deviation > 0 %}text-emerald-400{% else %}text-red-400{% endif %}">
             {% if indicators.deviation > 0 %}+{% endif %}{{ indicators.deviation|floatformat:2 }}%
           </span>
         </div>
         <div class="flex justify-between text-gray-400">
-          <span>Momentum</span>
+          <span>Tendencia</span>
           <span>
             {% if indicators.momentum == "up" %}
-              <span class="text-emerald-400">↑ uptrend</span>
+              <span class="text-emerald-400">↑ al alza</span>
             {% elif indicators.momentum == "down" %}
-              <span class="text-red-400">↓ downtrend</span>
+              <span class="text-red-400">↓ a la baja</span>
             {% else %}
               <span class="text-gray-400">→ neutral</span>
             {% endif %}
           </span>
         </div>
         <div class="flex justify-between text-gray-400">
-          <span>Volatility (14d)</span>
+          <span>Volatilidad (14d)</span>
           <span class="tabular-nums font-mono text-gray-300">{{ indicators.volatility|floatformat:4 }}</span>
         </div>
       </div>
     </div>
 
-    {# ── Signal Card ── #}
+    {# ── Tarjeta de Señal ── #}
     {% if decision %}
     <div class="border rounded-2xl p-5 flex flex-col items-center justify-center text-center
       {% if decision.signal == 'STRONG BUY' %}bg-emerald-950 border-emerald-800
@@ -56,40 +57,40 @@
       {% elif decision.signal == 'NEUTRAL' %}bg-amber-950 border-amber-800
       {% else %}bg-red-950 border-red-900{% endif %}">
 
-      <p class="text-xs text-gray-400 uppercase tracking-widest mb-3">Today's Signal</p>
+      <p class="text-xs text-gray-400 uppercase tracking-widest mb-3">Señal de Hoy</p>
 
       <div class="px-5 py-3 rounded-xl font-black text-2xl tracking-tight mb-3
         {% if decision.signal == 'STRONG BUY' %}bg-emerald-500 text-white
         {% elif decision.signal == 'MODERATE BUY' %}bg-green-500 text-white
         {% elif decision.signal == 'NEUTRAL' %}bg-amber-400 text-gray-900
         {% else %}bg-red-600 text-white{% endif %}">
-        {{ decision.signal }}
+        {{ decision.signal|signal_label }}
       </div>
 
       <div class="flex items-center gap-2 mt-1">
-        <span class="text-xs text-gray-400">Confidence</span>
+        <span class="text-xs text-gray-400">Confianza</span>
         <span class="text-xs font-bold px-2 py-0.5 rounded
           {% if decision.confidence == 'HIGH' %}bg-emerald-600 text-white
           {% elif decision.confidence == 'MEDIUM' %}bg-amber-500 text-gray-900
           {% else %}bg-gray-600 text-white{% endif %}">
-          {{ decision.confidence }}
+          {{ decision.confidence|confidence_label }}
         </span>
       </div>
 
       <p class="text-xs text-gray-500 mt-4">
         {% if indicators.data_points < 30 %}
-          <span class="text-amber-500">⚠ Only {{ indicators.data_points }} data points</span>
+          <span class="text-amber-500">⚠ Solo {{ indicators.data_points }} puntos de datos</span>
         {% else %}
-          {{ indicators.data_points }} days of data
+          {{ indicators.data_points }} días de datos
         {% endif %}
       </p>
     </div>
 
-    {# ── Allocation Card ── #}
+    {# ── Tarjeta de Asignación ── #}
     <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-      <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">Suggested Allocation</p>
+      <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">Asignación Sugerida</p>
       <p class="text-4xl font-black text-white tabular-nums">${{ decision.suggested_amount|floatformat:0 }}</p>
-      <p class="text-sm text-gray-500 mt-1">{{ decision.allocation_pct }}% of monthly budget</p>
+      <p class="text-sm text-gray-500 mt-1">{{ decision.allocation_pct }}% del presupuesto mensual</p>
 
       <div class="mt-4">
         <div class="flex justify-between text-xs text-gray-500 mb-1">
@@ -108,7 +109,7 @@
       </div>
 
       <p class="text-xs text-gray-600 mt-4">
-        Monthly budget: <span class="text-gray-400">${{ config.monthly_usd_budget|floatformat:0 }}</span>
+        Presupuesto mensual: <span class="text-gray-400">${{ config.monthly_usd_budget|floatformat:0 }}</span>
       </p>
     </div>
     {% endif %}
@@ -117,10 +118,10 @@
 
   {% else %}
   <div class="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
-    <p class="text-gray-400 text-lg mb-2">No exchange rate data yet.</p>
+    <p class="text-gray-400 text-lg mb-2">Sin datos de tipo de cambio aún.</p>
     <p class="text-gray-600 text-sm">
-      Run <code class="bg-gray-800 px-2 py-0.5 rounded text-indigo-400">uv run python manage.py fetch_rates</code>
-      to seed the database.
+      Ejecutá <code class="bg-gray-800 px-2 py-0.5 rounded text-indigo-400">uv run python manage.py fetch_rates</code>
+      para poblar la base de datos.
     </p>
   </div>
   {% endif %}
