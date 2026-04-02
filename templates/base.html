@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}USD/BRL Monitor{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <meta name="htmx-config" content='{"defaultHeaders":{"X-CSRFToken":"{{ csrf_token }}"}}'>
+  <style>
+    body { background-color: #030712; }
+    .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+    .htmx-request .htmx-indicator,
+    .htmx-request.htmx-indicator { opacity: 1; }
+    .htmx-request .htmx-stable { opacity: 0.6; }
+  </style>
+</head>
+<body class="text-gray-100 min-h-screen font-sans antialiased">
+
+  <nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
+    <div class="flex items-center gap-3">
+      <span class="text-indigo-400 font-bold text-lg tracking-tight">USD/BRL</span>
+      <span class="text-gray-600 text-sm">Monitor</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="refresh-spinner" class="htmx-indicator text-indigo-400 text-sm animate-spin">↻</span>
+      <button
+        class="htmx-stable text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg"
+        hx-post="{% url 'refresh_data' %}"
+        hx-target="#stats-section"
+        hx-swap="outerHTML"
+        hx-indicator="#refresh-spinner"
+      >
+        ↻ Refresh Now
+      </button>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="text-center text-gray-700 text-xs py-6">
+    Data from awesomeapi.com.br &bull; Updates every 5 min
+  </footer>
+</body>
+</html>

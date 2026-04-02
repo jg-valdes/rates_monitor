@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+{# ── Stats Section (auto-refreshes via HTMX every 5 min) ── #}
+{% include 'rates/partials/stats.html' %}
+
+{% if has_data %}
+
+{# ── Chart + Config Row ── #}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+
+  {# Chart #}
+  <div class="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-5">
+    <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">
+      Rate History — Last 90 Days
+    </h2>
+    <div class="relative" style="height: 260px;">
+      <canvas id="rateChart"></canvas>
+    </div>
+  </div>
+
+  {# Config Panel #}
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+    <div id="config-panel">
+      {% include 'rates/partials/config_form.html' %}
+    </div>
+  </div>
+</div>
+
+{# ── History Table ── #}
+<div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+    <h2 class="text-xs text-gray-500 uppercase tracking-widest">Recent Decisions</h2>
+    <span class="text-xs text-gray-600">Last 30 trading days</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-xs text-gray-600 uppercase border-b border-gray-800">
+          <th class="px-5 py-3 text-left font-medium">Date</th>
+          <th class="px-5 py-3 text-right font-medium">Rate</th>
+          <th class="px-5 py-3 text-center font-medium">Signal</th>
+          <th class="px-5 py-3 text-center font-medium">Confidence</th>
+          <th class="px-5 py-3 text-right font-medium">Suggested $</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-800/60">
+        {% for item in history %}
+        <tr class="hover:bg-gray-800/30 transition-colors">
+          <td class="px-5 py-3 text-gray-400 tabular-nums">{{ item.date }}</td>
+          <td class="px-5 py-3 text-right font-mono text-gray-200 tabular-nums">
+            {{ item.rate|floatformat:4 }}
+          </td>
+          <td class="px-5 py-3 text-center">
+            <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold
+              {% if item.signal == 'STRONG BUY' %}bg-emerald-500/20 text-emerald-300 border border-emerald-700
+              {% elif item.signal == 'MODERATE BUY' %}bg-green-500/20 text-green-300 border border-green-700
+              {% elif item.signal == 'NEUTRAL' %}bg-amber-500/20 text-amber-300 border border-amber-700
+              {% else %}bg-red-500/20 text-red-300 border border-red-800{% endif %}">
+              {{ item.signal }}
+            </span>
+          </td>
+          <td class="px-5 py-3 text-center text-xs
+            {% if item.confidence == 'HIGH' %}text-emerald-400
+            {% elif item.confidence == 'MEDIUM' %}text-amber-400
+            {% else %}text-gray-500{% endif %}">
+            {{ item.confidence }}
+          </td>
+          <td class="px-5 py-3 text-right font-mono tabular-nums
+            {% if item.signal == 'DO NOT BUY' %}text-gray-600{% else %}text-gray-200{% endif %}">
+            ${{ item.suggested_amount|floatformat:0 }}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="px-5 py-8 text-center text-gray-600">
+            Not enough data to compute history. Need at least 2 data points.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── Chart JS Init ── #}
+<script>
+(function () {
+  const raw = {{ chart_data|safe }};
+
+  const gridColor = 'rgba(255,255,255,0.05)';
+  const tickColor = '#4b5563';
+  const tooltipBg = '#111827';
+
+  new Chart(document.getElementById('rateChart'), {
+    type: 'line',
+    data: {
+      labels: raw.labels,
+      datasets: [
+        {
+          label: 'USD/BRL',
+          data: raw.values,
+          borderColor: '#818cf8',
+          backgroundColor: 'rgba(129,140,248,0.07)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+        },
+        {
+          label: 'MA 30',
+          data: raw.ma30,
+          borderColor: '#fbbf24',
+          borderDash: [5, 4],
+          pointRadius: 0,
+          borderWidth: 1.5,
+          spanGaps: true,
+        },
+        {
+          label: 'MA 90',
+          data: raw.ma90,
+          borderColor: '#f87171',
+          borderDash: [10, 5],
+          pointRadius: 0,
+          borderWidth: 1.5,
+          spanGaps: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#9ca3af',
+            usePointStyle: true,
+            pointStyleWidth: 12,
+            font: { size: 11 },
+          },
+        },
+        tooltip: {
+          backgroundColor: tooltipBg,
+          titleColor: '#f3f4f6',
+          bodyColor: '#9ca3af',
+          borderColor: '#374151',
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return v != null ? ` ${ctx.dataset.label}: ${v.toFixed(4)}` : '';
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: tickColor, maxTicksLimit: 12, font: { size: 10 } },
+          grid: { color: gridColor },
+        },
+        y: {
+          ticks: { color: tickColor, font: { size: 10 } },
+          grid: { color: gridColor },
+        },
+      },
+    },
+  });
+})();
+</script>
+
+{% else %}
+
+{# No data state — shown before first fetch #}
+<div class="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
+  <p class="text-gray-300 text-xl font-semibold mb-2">Getting started</p>
+  <p class="text-gray-500 mb-6">
+    Run the command below to fetch the last 90 days of exchange rate data.
+  </p>
+  <code class="bg-gray-800 text-indigo-400 px-4 py-2 rounded-lg text-sm">
+    uv run python manage.py fetch_rates
+  </code>
+</div>
+
+{% endif %}
+
+{% endblock %}
