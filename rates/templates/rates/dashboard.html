@@ -1,20 +1,22 @@
 {% extends 'base.html' %}
 {% load rates_extras %}
 
+{% block title %}{{ pair.code }} — Monitor Cambiario{% endblock %}
+
 {% block content %}
 
-{# ── Sección de Stats (se actualiza automáticamente cada 5 min via HTMX) ── #}
+{# ── Stats (auto-refresh via HTMX) ────────────────────────────────────────── #}
 {% include 'rates/partials/stats.html' %}
 
 {% if has_data %}
 
-{# ── Gráfico + Configuración ── #}
+{# ── Gráfico + Configuración ─────────────────────────────────────────────── #}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
 
   {# Gráfico #}
   <div class="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-5">
     <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">
-      Historial de Cotización — Últimos 90 Días
+      {{ pair.code }} — Historial de Cotización (últimos 90 días)
     </h2>
     <div class="relative" style="height: 260px;">
       <canvas id="rateChart"></canvas>
@@ -29,11 +31,11 @@
   </div>
 </div>
 
-{# ── Tabla de Historial ── #}
+{# ── Tabla de Historial ──────────────────────────────────────────────────── #}
 <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
   <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
     <h2 class="text-xs text-gray-500 uppercase tracking-widest">Decisiones Recientes</h2>
-    <span class="text-xs text-gray-600">Últimos 30 días hábiles</span>
+    <span class="text-xs text-gray-600">Últimos 30 días</span>
   </div>
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
@@ -85,14 +87,20 @@
   </div>
 </div>
 
-{# ── Inicialización del Gráfico ── #}
+{# ── Capital Desplegado ──────────────────────────────────────────────────── #}
+<div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 mt-4">
+  <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-5">Capital Desplegado — {{ pair.code }}</h2>
+  {% include 'rates/partials/purchases.html' %}
+</div>
+
+{# ── Chart.js init ───────────────────────────────────────────────────────── #}
 <script>
 (function () {
   const raw = {{ chart_data|safe }};
 
-  const gridColor = 'rgba(255,255,255,0.05)';
-  const tickColor = '#4b5563';
-  const tooltipBg = '#111827';
+  const gridColor  = 'rgba(255,255,255,0.05)';
+  const tickColor  = '#4b5563';
+  const tooltipBg  = '#111827';
 
   new Chart(document.getElementById('rateChart'), {
     type: 'line',
@@ -100,7 +108,7 @@
       labels: raw.labels,
       datasets: [
         {
-          label: 'USD/BRL',
+          label: '{{ pair.code }}',
           data: raw.values,
           borderColor: '#818cf8',
           backgroundColor: 'rgba(129,140,248,0.07)',
@@ -161,11 +169,11 @@
       scales: {
         x: {
           ticks: { color: tickColor, maxTicksLimit: 12, font: { size: 10 } },
-          grid: { color: gridColor },
+          grid:  { color: gridColor },
         },
         y: {
           ticks: { color: tickColor, font: { size: 10 } },
-          grid: { color: gridColor },
+          grid:  { color: gridColor },
         },
       },
     },
@@ -175,14 +183,14 @@
 
 {% else %}
 
-{# Estado vacío — se muestra antes del primer fetch #}
+{# Estado vacío #}
 <div class="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
-  <p class="text-gray-300 text-xl font-semibold mb-2">Primeros pasos</p>
+  <p class="text-gray-300 text-xl font-semibold mb-2">Sin datos para {{ pair.code }}</p>
   <p class="text-gray-500 mb-6">
-    Ejecutá el comando a continuación para obtener los últimos 90 días de cotizaciones.
+    Ejecuta el comando a continuación para obtener los últimos 90 días de cotizaciones.
   </p>
   <code class="bg-gray-800 text-indigo-400 px-4 py-2 rounded-lg text-sm">
-    uv run python manage.py fetch_rates
+    uv run python manage.py fetch_rates --pair {{ pair.slug }}
   </code>
 </div>
 

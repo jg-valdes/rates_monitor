@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% load rates_extras %}
+
+{% block title %}Resumen — Monitor Cambiario{% endblock %}
+
+{% block content %}
+
+{# ── Comparador de Rutas ──────────────────────────────────────────────────── #}
+<div class="mb-6">
+  <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">Comparador de Rutas — UYU → BRL</h2>
+
+  {% if cross %}
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+    {# Ruta directa #}
+    <div class="bg-gray-900 border rounded-2xl p-5
+      {% if cross.best_route == 'directa' %}border-indigo-600{% else %}border-gray-800{% endif %}">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs text-gray-500 uppercase tracking-widest">Ruta Directa</p>
+        {% if cross.best_route == 'directa' %}
+        <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">Mejor</span>
+        {% endif %}
+      </div>
+      <p class="text-2xl font-black text-white tabular-nums">{{ cross.direct_rate }}</p>
+      <p class="text-sm text-gray-500 mt-1">BRL por 1 UYU</p>
+      <div class="mt-3 text-xs text-gray-600 font-mono">UYU → BRL</div>
+    </div>
+
+    {# Ruta indirecta #}
+    <div class="bg-gray-900 border rounded-2xl p-5
+      {% if cross.best_route == 'indirecta' %}border-indigo-600{% else %}border-gray-800{% endif %}">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs text-gray-500 uppercase tracking-widest">Ruta Indirecta</p>
+        {% if cross.best_route == 'indirecta' %}
+        <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">Mejor</span>
+        {% endif %}
+      </div>
+      <p class="text-2xl font-black text-white tabular-nums">{{ cross.indirect_rate }}</p>
+      <p class="text-sm text-gray-500 mt-1">BRL por 1 UYU</p>
+      <div class="mt-3 text-xs text-gray-600 font-mono">UYU → USD → BRL</div>
+    </div>
+
+    {# Veredicto #}
+    <div class="bg-indigo-950 border border-indigo-800 rounded-2xl p-5 flex flex-col justify-center">
+      <p class="text-xs text-indigo-300 uppercase tracking-widest mb-2">Conviene ir por ruta</p>
+      <p class="text-3xl font-black text-white uppercase tracking-tight mb-1">
+        {{ cross.best_route }}
+      </p>
+      <p class="text-sm text-indigo-300">
+        +{{ cross.advantage_pct|floatformat:4 }}% más BRL por peso
+      </p>
+      <div class="mt-4 text-xs text-gray-500 space-y-1 font-mono">
+        <div class="flex justify-between">
+          <span>UYU-USD:</span>
+          <span>{{ cross.uyu_usd }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span>USD-BRL:</span>
+          <span>{{ cross.usd_brl }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span>UYU-BRL:</span>
+          <span>{{ cross.uyu_brl }}</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  {% else %}
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
+    <p class="text-gray-400 mb-2">Sin datos suficientes para comparar rutas.</p>
+    <p class="text-gray-600 text-sm">
+      Ejecuta
+      <code class="bg-gray-800 px-2 py-0.5 rounded text-indigo-400">uv run python manage.py fetch_rates</code>
+      para poblar los tres pares.
+    </p>
+  </div>
+  {% endif %}
+</div>
+
+{# ── Resumen de pares ─────────────────────────────────────────────────────── #}
+<h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">Estado de los Pares</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  {% for summary in summaries %}
+  {% with p=summary.pair ind=summary.indicators dec=summary.decision %}
+  <a href="{% url 'dashboard' p.slug %}"
+     class="bg-gray-900 border border-gray-800 hover:border-gray-600 rounded-2xl p-5 transition-colors block">
+
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-widest">{{ p.name }}</p>
+        <p class="font-bold text-white">{{ p.code }}</p>
+      </div>
+      {% if dec %}
+      <span class="text-xs font-bold px-2.5 py-1 rounded-full
+        {% if dec.signal == 'STRONG BUY' %}bg-emerald-500/20 text-emerald-300 border border-emerald-700
+        {% elif dec.signal == 'MODERATE BUY' %}bg-green-500/20 text-green-300 border border-green-700
+        {% elif dec.signal == 'NEUTRAL' %}bg-amber-500/20 text-amber-300 border border-amber-700
+        {% else %}bg-red-500/20 text-red-300 border border-red-800{% endif %}">
+        {{ dec.signal|signal_label }}
+      </span>
+      {% endif %}
+    </div>
+
+    {% if ind %}
+    <p class="text-3xl font-black text-white tabular-nums mb-1">{{ ind.current_rate|floatformat:4 }}</p>
+    <div class="flex items-center gap-2 text-sm">
+      <span class="font-semibold tabular-nums
+        {% if ind.deviation > 0 %}text-emerald-400{% else %}text-red-400{% endif %}">
+        {% if ind.deviation > 0 %}+{% endif %}{{ ind.deviation|floatformat:2 }}%
+      </span>
+      <span class="text-gray-600">vs MA90</span>
+    </div>
+    {% else %}
+    <p class="text-gray-600 text-sm mt-2">Sin datos aún</p>
+    {% endif %}
+
+  </a>
+  {% endwith %}
+  {% endfor %}
+</div>
+
+{# ── Capital Desplegado (resumen por par) ─────────────────────────────────── #}
+<div class="mt-6">
+  <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">Capital Desplegado por Par</h2>
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-xs text-gray-600 uppercase border-b border-gray-800">
+          <th class="px-5 py-3 text-left font-medium">Par</th>
+          <th class="px-5 py-3 text-right font-medium">Operaciones</th>
+          <th class="px-5 py-3 text-right font-medium">Total Gastado</th>
+          <th class="px-5 py-3 text-right font-medium">Total Recibido</th>
+          <th class="px-5 py-3 text-right font-medium">Tasa Media</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-800/60">
+        {% for s in summaries %}
+        <tr class="hover:bg-gray-800/20 transition-colors">
+          <td class="px-5 py-3">
+            <a href="{% url 'dashboard' s.pair.slug %}"
+               class="text-indigo-400 hover:text-indigo-300 font-mono font-semibold">
+              {{ s.pair.code }}
+            </a>
+            <span class="text-gray-600 text-xs ml-2">{{ s.pair.name }}</span>
+          </td>
+          {% if s.totals %}
+          <td class="px-5 py-3 text-right text-gray-400 tabular-nums">{{ s.totals.count }}</td>
+          <td class="px-5 py-3 text-right font-mono text-gray-200 tabular-nums">
+            {{ s.totals.total_spent|floatformat:2 }} {{ s.pair.base_currency }}
+          </td>
+          <td class="px-5 py-3 text-right font-mono text-gray-200 tabular-nums">
+            {{ s.totals.total_received|floatformat:2 }} {{ s.pair.quote_currency }}
+          </td>
+          <td class="px-5 py-3 text-right font-mono text-indigo-300 tabular-nums">
+            {{ s.totals.avg_rate|floatformat:4 }}
+          </td>
+          {% else %}
+          <td colspan="4" class="px-5 py-3 text-gray-700 text-center text-xs">Sin compras registradas</td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

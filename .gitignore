@@ -7,3 +7,5 @@ db.sqlite3
 *.log
 dist/
 .ruff_cache/
+.idea
+.claude

@@ -7,17 +7,18 @@ from rates.translations import SIGNAL_LABELS
 logger = logging.getLogger(__name__)
 
 
-def check_and_send(indicators: dict, decision: dict, config) -> list[str]:
+def check_and_send(indicators: dict, decision: dict, config, pair_name: str = "") -> list[str]:
     """
-    Evalúa condiciones de alerta y envía notificaciones via webhook.
+    Evalúa condiciones de alerta y envía notificaciones vía webhook.
     Retorna la lista de mensajes de alerta disparados.
     """
     triggered = []
     signal_es = SIGNAL_LABELS.get(decision["signal"], decision["signal"])
+    prefix = f"[{pair_name}] " if pair_name else ""
 
     if config.alert_on_strong_buy and decision["signal"] == "STRONG BUY":
         triggered.append(
-            f"Señal {signal_es}: cotización {indicators['current_rate']:.4f}, "
+            f"{prefix}Señal {signal_es}: cotización {indicators['current_rate']:.4f}, "
             f"desviación {indicators['deviation']:+.2f}%"
         )
 
@@ -26,7 +27,7 @@ def check_and_send(indicators: dict, decision: dict, config) -> list[str]:
         and indicators["deviation"] > config.alert_on_deviation_above
     ):
         triggered.append(
-            f"Desviación {indicators['deviation']:+.2f}% superó el umbral "
+            f"{prefix}Desviación {indicators['deviation']:+.2f}% superó el umbral "
             f"configurado de {config.alert_on_deviation_above:+.2f}%"
         )
 
@@ -35,27 +36,28 @@ def check_and_send(indicators: dict, decision: dict, config) -> list[str]:
         and indicators["current_rate"] > config.alert_on_rate_above
     ):
         triggered.append(
-            f"Cotización {indicators['current_rate']:.4f} superó el umbral "
+            f"{prefix}Cotización {indicators['current_rate']:.4f} superó el umbral "
             f"configurado de {config.alert_on_rate_above:.4f}"
         )
 
     for message in triggered:
         logger.warning(f"ALERTA: {message}")
         if config.alert_webhook_url:
-            _send_webhook(config.alert_webhook_url, message, indicators, decision)
+            _send_webhook(config.alert_webhook_url, message, indicators, decision, pair_name)
 
     return triggered
 
 
-def _send_webhook(url: str, message: str, indicators: dict, decision: dict) -> None:
+def _send_webhook(url: str, message: str, indicators: dict, decision: dict, pair_name: str) -> None:
     payload = {
         "text": message,
+        "pair": pair_name,
         "signal": decision["signal"],
         "signal_es": SIGNAL_LABELS.get(decision["signal"], decision["signal"]),
         "rate": indicators["current_rate"],
         "deviation": indicators["deviation"],
         "confidence": decision["confidence"],
-        "suggested_usd": decision["suggested_amount"],
+        "suggested_amount": decision["suggested_amount"],
     }
     try:
         response = requests.post(url, json=payload, timeout=5)

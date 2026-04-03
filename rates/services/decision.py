@@ -47,7 +47,7 @@ def build_decision(indicators: dict, config) -> dict:
     signal = get_signal(indicators["deviation"], config)
     confidence = get_confidence(signal, indicators["momentum"])
     multiplier = SIGNAL_MULTIPLIERS[signal]
-    suggested_amount = round(config.monthly_usd_budget * multiplier, 2)
+    suggested_amount = round(config.monthly_budget * multiplier, 2)
 
     return {
         "signal": signal,

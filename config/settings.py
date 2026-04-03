@@ -10,6 +10,9 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
+# Set this in .env to enable the passcode gate. Leave empty to disable in dev.
+ACCESS_PASSCODE = os.environ.get("ACCESS_PASSCODE", "")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -28,6 +31,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "rates.middleware.PasscodeMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -43,6 +47,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "rates.context_processors.active_pairs",
             ],
         },
     },

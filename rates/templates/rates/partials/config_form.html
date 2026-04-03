@@ -4,12 +4,12 @@
 </div>
 {% endif %}
 
-<h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">Configuración</h2>
+<h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">Configuración — {{ pair.code }}</h2>
 
 <form
   method="post"
-  action="{% url 'update_config' %}"
-  hx-post="{% url 'update_config' %}"
+  action="{% url 'update_config' pair.slug %}"
+  hx-post="{% url 'update_config' pair.slug %}"
   hx-target="#config-panel"
   hx-swap="innerHTML"
 >
@@ -17,8 +17,8 @@
   <div class="space-y-4 text-sm">
 
     <div>
-      <label class="block text-gray-400 mb-1 text-xs">Presupuesto Mensual (USD)</label>
-      <input type="number" name="monthly_usd_budget" value="{{ config.monthly_usd_budget }}"
+      <label class="block text-gray-400 mb-1 text-xs">Presupuesto Mensual</label>
+      <input type="number" name="monthly_budget" value="{{ config.monthly_budget }}"
         step="100" min="0"
         class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white
                focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
@@ -80,10 +80,10 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <input type="checkbox" name="alert_on_strong_buy" id="chk_strong_buy"
+      <input type="checkbox" name="alert_on_strong_buy" id="chk_strong_buy_{{ pair.slug }}"
         {% if config.alert_on_strong_buy %}checked{% endif %}
         class="w-4 h-4 rounded border-gray-600 bg-gray-800 text-indigo-500">
-      <label for="chk_strong_buy" class="text-gray-400 text-xs cursor-pointer">
+      <label for="chk_strong_buy_{{ pair.slug }}" class="text-gray-400 text-xs cursor-pointer">
         Alertar al activarse COMPRA FUERTE
       </label>
     </div>

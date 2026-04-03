@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceso — Monitor Cambiario</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>body { background-color: #030712; }</style>
+</head>
+<body class="text-gray-100 min-h-screen font-sans antialiased flex items-center justify-center">
+
+  <div class="w-full max-w-sm px-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8">
+
+      <div class="text-center mb-8">
+        <p class="text-indigo-400 font-bold text-xl tracking-tight mb-1">Monitor Cambiario</p>
+        <p class="text-gray-500 text-sm">Introduce el código de acceso para continuar</p>
+      </div>
+
+      {% if error %}
+      <div class="mb-5 bg-red-950 border border-red-800 rounded-xl px-4 py-3 text-red-300 text-sm text-center">
+        Código incorrecto. Inténtalo de nuevo.
+      </div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next }}">
+        <div class="mb-4">
+          <label class="block text-gray-400 text-xs uppercase tracking-widest mb-2">
+            Código de acceso
+          </label>
+          <input
+            type="password"
+            name="passcode"
+            autofocus
+            autocomplete="current-password"
+            class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-base
+                   focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500
+                   placeholder-gray-600"
+            placeholder="••••••••"
+          >
+        </div>
+        <button
+          type="submit"
+          class="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white
+                 rounded-xl px-4 py-3 font-semibold text-sm transition-colors"
+        >
+          Entrar
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+</body>
+</html>

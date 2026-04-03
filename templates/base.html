@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}USD/BRL Monitor{% endblock %}</title>
+  <title>{% block title %}Monitor Cambiario{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
@@ -18,22 +18,60 @@
 </head>
 <body class="text-gray-100 min-h-screen font-sans antialiased">
 
-  <nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-    <div class="flex items-center gap-3">
-      <span class="text-indigo-400 font-bold text-lg tracking-tight">USD/BRL</span>
-      <span class="text-gray-600 text-sm">Monitor</span>
-    </div>
-    <div class="flex items-center gap-4">
-      <span id="refresh-spinner" class="htmx-indicator text-indigo-400 text-sm animate-spin">↻</span>
-      <button
-        class="htmx-stable text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg"
-        hx-post="{% url 'refresh_data' %}"
-        hx-target="#stats-section"
-        hx-swap="outerHTML"
-        hx-indicator="#refresh-spinner"
-      >
-        ↻ Actualizar
-      </button>
+  <nav class="bg-gray-900 border-b border-gray-800 px-4 py-3 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+
+      {# Brand #}
+      <a href="{% url 'overview' %}" class="flex items-center gap-2 shrink-0">
+        <span class="text-indigo-400 font-bold text-base tracking-tight">Monitor</span>
+        <span class="text-gray-600 text-sm">Cambiario</span>
+      </a>
+
+      {# Pair tabs #}
+      <div class="flex items-center gap-1 overflow-x-auto">
+        <a href="{% url 'overview' %}"
+           class="px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap
+                  {% if request.resolver_match.url_name == 'overview' or request.resolver_match.url_name == 'root' %}
+                    bg-indigo-600 text-white font-semibold
+                  {% else %}
+                    text-gray-400 hover:text-white hover:bg-gray-800
+                  {% endif %}">
+          Resumen
+        </a>
+        {% for p in all_pairs %}
+        <a href="{% url 'dashboard' p.slug %}"
+           class="px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap
+                  {% if pair.code == p.code %}
+                    bg-indigo-600 text-white font-semibold
+                  {% else %}
+                    text-gray-400 hover:text-white hover:bg-gray-800
+                  {% endif %}">
+          {{ p.code }}
+        </a>
+        {% endfor %}
+      </div>
+
+      {# Right side: refresh spinner + button (only on pair dashboards) + logout #}
+      <div class="flex items-center gap-3 shrink-0">
+        {% if pair %}
+        <span id="refresh-spinner" class="htmx-indicator text-indigo-400 text-sm animate-spin">↻</span>
+        <button
+          class="htmx-stable text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1.5
+                 bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg"
+          hx-post="{% url 'refresh_data' pair.slug %}"
+          hx-target="#stats-section"
+          hx-swap="outerHTML"
+          hx-indicator="#refresh-spinner"
+        >
+          ↻ Actualizar
+        </button>
+        {% endif %}
+        <a href="{% url 'logout' %}"
+           class="text-sm text-gray-600 hover:text-gray-300 transition-colors">
+          Salir
+        </a>
+      </div>
+
     </div>
   </nav>
 

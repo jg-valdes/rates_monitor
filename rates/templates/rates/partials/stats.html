@@ -1,6 +1,6 @@
 {% load rates_extras %}
 <div id="stats-section"
-     hx-get="{% url 'stats_partial' %}"
+     hx-get="{% url 'stats_partial' pair.slug %}"
      hx-trigger="every 300s"
      hx-swap="outerHTML"
      class="mb-6">
@@ -10,7 +10,7 @@
 
     {# ── Tarjeta de Cotización ── #}
     <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-      <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">USD / BRL</p>
+      <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">{{ pair.code }}</p>
       <p class="text-4xl font-black text-white tabular-nums">{{ indicators.current_rate|floatformat:4 }}</p>
       <p class="text-xs text-gray-600 mt-1">{{ indicators.current_date }}</p>
 
@@ -109,7 +109,7 @@
       </div>
 
       <p class="text-xs text-gray-600 mt-4">
-        Presupuesto mensual: <span class="text-gray-400">${{ config.monthly_usd_budget|floatformat:0 }}</span>
+        Presupuesto mensual: <span class="text-gray-400">${{ config.monthly_budget|floatformat:0 }}</span>
       </p>
     </div>
     {% endif %}
@@ -118,9 +118,9 @@
 
   {% else %}
   <div class="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
-    <p class="text-gray-400 text-lg mb-2">Sin datos de tipo de cambio aún.</p>
+    <p class="text-gray-400 text-lg mb-2">Sin datos de cotización para {{ pair.code }} aún.</p>
     <p class="text-gray-600 text-sm">
-      Ejecutá <code class="bg-gray-800 px-2 py-0.5 rounded text-indigo-400">uv run python manage.py fetch_rates</code>
+      Ejecuta <code class="bg-gray-800 px-2 py-0.5 rounded text-indigo-400">uv run python manage.py fetch_rates --pair {{ pair.slug }}</code>
       para poblar la base de datos.
     </p>
   </div>

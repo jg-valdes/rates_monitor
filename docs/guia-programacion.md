@@ -1,4 +1,4 @@
-# Guía de Programación — Monitor USD/BRL
+# Guía de Programación — Monitor Cambiario
 
 Convenciones, patrones de diseño y guía para extender el proyecto.
 
@@ -8,28 +8,36 @@ Convenciones, patrones de diseño y guía para extender el proyecto.
 
 ```
 rates_monitor/
-├── config/                  # Configuración de Django (settings, urls, wsgi)
-├── rates/                   # Única app Django
-│   ├── migrations/
-│   ├── services/            # Lógica de negocio pura (sin Django)
-│   │   ├── fetcher.py       # Obtención de datos de la API
-│   │   ├── indicators.py    # Cálculo de indicadores técnicos
-│   │   ├── decision.py      # Motor de señales y asignación
-│   │   └── alerts.py        # Notificaciones via webhook
+├── config/                        # Configuración de Django (settings, urls, wsgi)
+├── rates/                         # Única app Django
+│   ├── migrations/                # 0001–0005 (schema + data + Purchase)
+│   ├── services/                  # Lógica de negocio pura (sin Django)
+│   │   ├── fetcher.py             # Obtención de datos de la API por par
+│   │   ├── indicators.py          # Cálculo de indicadores técnicos
+│   │   ├── decision.py            # Motor de señales y asignación de capital
+│   │   ├── cross_pair.py          # Comparador de rutas UYU → BRL
+│   │   └── alerts.py              # Notificaciones vía webhook
 │   ├── templatetags/
-│   │   └── rates_extras.py  # Filtros de template personalizados
+│   │   └── rates_extras.py        # Filtros de template personalizados
 │   ├── management/commands/
-│   │   └── fetch_rates.py   # Comando de gestión para cron
+│   │   └── fetch_rates.py         # Comando CLI para cron (todos los pares)
 │   ├── templates/rates/
-│   │   ├── dashboard.html
-│   │   └── partials/        # Fragmentos HTMX
-│   ├── models.py
-│   ├── views.py
-│   ├── urls.py
-│   ├── translations.py      # Mapeo de constantes internas → etiquetas en español
+│   │   ├── login.html             # Formulario de código de acceso (standalone)
+│   │   ├── overview.html          # Página de resumen (comparador + capital)
+│   │   ├── dashboard.html         # Dashboard por par
+│   │   └── partials/              # Fragmentos HTMX
+│   │       ├── stats.html         # Tarjetas de indicadores/señal (auto-refresh)
+│   │       ├── config_form.html   # Configuración por par
+│   │       └── purchases.html     # Capital desplegado (HTMX add/delete)
+│   ├── models.py                  # CurrencyPair, ExchangeRate, Purchase, PairConfig
+│   ├── views.py                   # Todas las vistas + helpers
+│   ├── urls.py                    # Rutas con slugs en minúsculas
+│   ├── middleware.py              # PasscodeMiddleware
+│   ├── context_processors.py     # Inyecta all_pairs en cada template
+│   ├── translations.py            # Mapeo de constantes internas → español
 │   └── admin.py
 ├── templates/
-│   └── base.html            # Layout base con CDNs
+│   └── base.html                  # Layout global (nav con tabs de pares, logout)
 └── docs/
 ```
 
@@ -39,7 +47,7 @@ rates_monitor/
 
 ### 1. Separación entre lógica y framework
 
-Toda la lógica de negocio vive en `rates/services/`. Esos módulos son **funciones Python puras**: no importan Django, no hacen queries, no usan `request`. Esto los hace fáciles de testear y de reusar desde cualquier contexto (views, comandos de gestión, scripts).
+Toda la lógica de negocio vive en `rates/services/`. Esos módulos son **funciones Python puras**: no importan Django, no hacen queries, no usan `request`. Esto los hace fáciles de testear y reusar desde cualquier contexto (views, comandos de gestión, scripts).
 
 ```python
 # Correcto — función pura, testeable en aislamiento
@@ -54,30 +62,52 @@ def compute_deviation_from_db():
 
 ### 2. Las views son orquestadoras
 
-Las views en `rates/views.py` hacen exactamente una cosa: obtener los datos del ORM, llamar a los servicios, y armar el contexto para el template. No contienen lógica de negocio.
+Las views en `rates/views.py` hacen una sola cosa: obtener datos del ORM, llamar a los servicios, y armar el contexto para el template. No contienen lógica de negocio.
 
 ```python
-def dashboard(request):
-    rates_list = list(ExchangeRate.objects.order_by("date"))  # query
-    config = UserConfig.get_solo()                             # query
-    indicators = compute_all(rates_list)                       # servicio
-    decision = build_decision(indicators, config)              # servicio
-    return render(request, "rates/dashboard.html", {...})      # render
+def dashboard(request, pair_code):
+    pair       = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
+    config     = _get_or_create_config(pair)
+    indicators = compute_all(rates_list)          # servicio
+    decision   = build_decision(indicators, config) # servicio
+    return render(request, "rates/dashboard.html", {...})
 ```
 
-### 3. Las constantes de dominio son siempre inglés
+### 3. Las constantes de dominio son siempre en inglés
 
-Los valores almacenados en la base de datos y usados en comparaciones de código (`STRONG BUY`, `HIGH`, `up`) se mantienen siempre en inglés. Las traducciones al español son únicamente para display, centralizadas en `rates/translations.py`.
+Los valores almacenados en la base de datos y usados en comparaciones Python (`STRONG BUY`, `HIGH`, `up`) se mantienen siempre en inglés. Las traducciones al español son solo para display, centralizadas en `rates/translations.py`.
 
 **Por qué:** mezclar el idioma de presentación con el de dominio haría que renombrar una señal requiera una migración de base de datos.
 
-```python
-# rates/translations.py — único lugar donde se traduce
-SIGNAL_LABELS = {
-    "STRONG BUY": "COMPRA FUERTE",
-    ...
-}
-```
+### 4. Los pares cambiarios son entidades gestionadas
+
+No hay ningún código de par en duro en la lógica de negocio. Todas las funciones reciben un objeto `CurrencyPair` o una lista de tasas ya filtradas. Añadir un nuevo par solo requiere insertar una fila en la tabla `CurrencyPair` (y su `PairConfig`) — el resto del sistema lo detecta automáticamente.
+
+---
+
+## Modelos
+
+### `CurrencyPair`
+
+Entidad central. Contiene el código (`USD-BRL`), nombre legible, código de API de AwesomeAPI y estado activo.
+
+**Propiedades calculadas** (sin columnas en BD):
+- `slug` → `code.lower()`, usado en URLs
+- `base_currency` → parte izquierda del código (`USD` en `USD-BRL`)
+- `quote_currency` → parte derecha del código (`BRL` en `USD-BRL`)
+
+### `ExchangeRate`
+
+Un registro por día y par. Restricción única `(pair, date)`. Campos `high` y `low` son opcionales.
+
+### `PairConfig`
+
+Relación `OneToOne` con `CurrencyPair`. Almacena umbrales de decisión, presupuesto mensual y configuración de alertas por par. Se crea automáticamente con defaults si no existe (`_get_or_create_config(pair)`).
+
+### `Purchase`
+
+Registra conversiones reales ejecutadas por el usuario. Campos: `pair`, `date`, `amount_spent` (moneda base), `amount_received` (moneda cotizada), `note`. La tasa efectiva (`effective_rate`) es una propiedad calculada: `amount_received / amount_spent`.
 
 ---
 
@@ -85,120 +115,131 @@ SIGNAL_LABELS = {
 
 ### `services/fetcher.py`
 
-**Responsabilidad única:** comunicarse con la API externa y persistir los datos.
+```python
+def fetch_and_store(pair: CurrencyPair, days: int = 90) -> tuple[int, int]:
+```
 
-- Usa `update_or_create` para ser idempotente (se puede ejecutar N veces sin duplicar registros).
-- Lanza excepciones en lugar de tragárselas. El llamador (view o comando) decide qué hacer.
-- No hace transformaciones de negocio: solo mapea campos de API → campos de modelo.
+- Usa `pair.api_code` para construir la URL de AwesomeAPI.
+- Usa `update_or_create(pair=pair, date=rate_date, ...)` para ser idempotente.
+- Lanza excepciones — el llamador decide qué hacer.
 
 ### `services/indicators.py`
 
-**Funciones puras** que reciben listas de floats y devuelven floats.
+Funciones puras que reciben listas de floats y devuelven floats:
 
 ```python
-# Todas las funciones tienen esta firma:
 def compute_ma(values: list[float], window: int) -> float | None: ...
 def compute_deviation(rate: float, ma90: float) -> float: ...
-def compute_momentum(values: list[float]) -> str: ...  # "up" | "down" | "neutral"
+def compute_momentum(values: list[float]) -> str: ...   # "up" | "down" | "neutral"
 def compute_volatility(values: list[float], window: int = 14) -> float: ...
-
-# Función orquestadora que llama a todas las anteriores:
-def compute_all(rates_list) -> dict | None: ...
+def compute_all(rates_list) -> dict | None: ...         # orquestadora
+def compute_rolling_ma(values: list[float], window: int) -> list[float | None]: ...
 ```
 
-La función `compute_rolling_ma` devuelve una lista de `float | None` para alimentar Chart.js. Los `None` los primeros N-1 puntos hacen que Chart.js deje esa parte de la línea vacía.
+`compute_rolling_ma` devuelve `None` en los primeros `window-1` puntos para que Chart.js deje esa parte de la línea vacía.
 
 ### `services/decision.py`
 
-Transforma indicadores + configuración en una decisión accionable.
+```python
+def build_decision(indicators: dict, config: PairConfig) -> dict:
+    # Devuelve: signal, confidence, suggested_amount, allocation_pct, color
+```
+
+Las constantes de señal (`STRONG_BUY`, etc.) nunca deben cambiar — están almacenadas en la BD y comparadas en código.
+
+### `services/cross_pair.py`
+
+Compara las dos rutas posibles para convertir UYU → BRL:
 
 ```python
-# Constantes de señal — nunca cambiar los strings (están en la DB)
-STRONG_BUY = "STRONG BUY"
-MODERATE_BUY = "MODERATE BUY"
-NEUTRAL = "NEUTRAL"
-DO_NOT_BUY = "DO NOT BUY"
-
-# Función pública principal
-def build_decision(indicators: dict, config) -> dict:
-    signal = get_signal(indicators["deviation"], config)
-    confidence = get_confidence(signal, indicators["momentum"])
-    ...
-    return {"signal": signal, "confidence": confidence, ...}
+def compute_cross_pair() -> dict | None:
+    # direct_rate   = cotización UYU-BRL
+    # indirect_rate = cotización UYU-USD × USD-BRL
+    # Devuelve None si algún par no tiene datos aún
 ```
+
+Devuelve `None` con degradación elegante cuando faltan datos de cualquiera de los tres pares.
 
 ### `services/alerts.py`
 
-- **Nunca lanza excepciones**: los errores de webhook se logean pero no interrumpen el flujo. Una alerta fallida no debe impedir que el comando de gestión termine exitosamente.
-- El payload del webhook incluye `signal_es` (español) además del código interno, para que el destinatario pueda mostrar el texto localizado.
+```python
+def check_and_send(indicators, decision, config, pair_name: str = "") -> list[str]:
+```
+
+- Nunca lanza excepciones: los errores de webhook se logean pero no interrumpen el flujo.
+- Incluye `pair_name` como prefijo en todos los mensajes (`[Dólar / Real] Señal COMPRA FUERTE…`).
+- El payload del webhook incluye el campo `pair` para que el receptor pueda filtrar por par.
 
 ---
 
-## Modelos
+## Seguridad — PasscodeMiddleware
 
-### `ExchangeRate`
+`rates/middleware.py` intercepta todas las peticiones. Si `settings.ACCESS_PASSCODE` está definido:
 
-Un registro por día de cotización (restricción `unique=True` en `date`). Campos `high` y `low` son opcionales porque la API no siempre los provee.
+1. Rutas exentas: `/login/`, `/logout/`, `/admin/` — pasan sin verificación.
+2. Comprueba la cookie `rm_access` con `django.core.signing.loads(max_age=86400)`.
+3. Si la cookie no existe o está expirada → redirige a `/login/?next=<ruta>`.
 
-### `UserConfig` — patrón Singleton
-
-Siempre tiene `pk=1`. Se accede via `UserConfig.get_solo()` que usa `get_or_create(pk=1)`.
+La comparación del código en `login_view` usa `hmac.compare_digest` (tiempo constante, seguro frente a timing attacks). El token firmado usa la `SECRET_KEY` de Django — no se necesita tabla adicional en BD.
 
 ```python
-def save(self, *args, **kwargs):
-    self.pk = 1  # garantiza que solo existe una fila
-    super().save(*args, **kwargs)
+# settings.py
+ACCESS_PASSCODE = os.environ.get("ACCESS_PASSCODE", "")
+# Vacío → middleware desactivado (comodidad en desarrollo)
 ```
-
-No usar librerías externas (`django-solo`) para algo que se resuelve con 3 líneas.
 
 ---
 
 ## Templates y HTMX
 
-### Estructura de templates
+### Estructura
 
 ```
-templates/base.html              ← layout global (CDNs, nav, footer)
+templates/base.html                    ← layout global (tabs de pares, logout)
 rates/templates/rates/
-  dashboard.html                 ← página principal (extends base.html)
+  login.html                           ← standalone (no extiende base.html)
+  overview.html                        ← extends base.html
+  dashboard.html                       ← extends base.html
   partials/
-    stats.html                   ← sección de tarjetas (HTMX-refreshable)
-    config_form.html             ← formulario de configuración (HTMX POST)
+    stats.html                         ← HTMX polling cada 300s
+    config_form.html                   ← HTMX POST por par
+    purchases.html                     ← HTMX add/delete compras
 ```
 
 ### Patrón de auto-refresh (polling)
 
-El div `#stats-section` en `stats.html` se auto-refresca usando el atributo HTMX `hx-trigger="every 300s"`. Para que el polling continúe después de un swap `outerHTML`, el partial devuelto **debe incluir los mismos atributos HTMX** en su elemento raíz.
+El `div#stats-section` en `stats.html` se auto-refresca con `hx-trigger="every 300s"`. Para que el polling continúe después de un `outerHTML` swap, el partial devuelto **debe incluir los mismos atributos HTMX** en su elemento raíz — incluyendo la URL correcta del par:
 
 ```html
-{# stats.html — el div raíz tiene los atributos de polling #}
 <div id="stats-section"
-     hx-get="{% url 'stats_partial' %}"
+     hx-get="{% url 'stats_partial' pair.slug %}"
      hx-trigger="every 300s"
      hx-swap="outerHTML">
-  ...
-</div>
 ```
+
+### URLs parametrizadas por par
+
+Todas las URLs de partial usan `pair.slug` (lowercase). El par siempre está disponible en contexto porque:
+- Las views de dashboard lo pasan explícitamente.
+- El context processor `active_pairs` inyecta `all_pairs` en todos los templates para el nav.
 
 ### CSRF con HTMX
 
-En lugar de incluir `{% csrf_token %}` en cada formulario HTMX, el token se inyecta globalmente via la meta tag en `base.html`:
+El token se inyecta globalmente en `base.html`:
 
 ```html
 <meta name="htmx-config" content='{"defaultHeaders":{"X-CSRFToken":"{{ csrf_token }}"}}'>
 ```
 
-Esto aplica el header `X-CSRFToken` a **todos** los requests HTMX. Django acepta el token tanto como campo de formulario como header HTTP.
+`login.html` es standalone (no extiende `base.html`) y usa `{% csrf_token %}` directamente en el formulario.
 
 ### Filtros de template
 
-Los filtros `signal_label`, `confidence_label` y `momentum_label` en `rates/templatetags/rates_extras.py` traducen constantes internas a español. Cargarlos con `{% load rates_extras %}` al inicio del template.
-
 ```html
 {% load rates_extras %}
-{{ decision.signal|signal_label }}       {# "COMPRA FUERTE" #}
+{{ decision.signal|signal_label }}        {# "COMPRA FUERTE" #}
 {{ decision.confidence|confidence_label }} {# "ALTA" #}
+{{ indicators.momentum|momentum_label }}   {# "al alza ↑" #}
 ```
 
 ---
@@ -210,14 +251,15 @@ Los filtros `signal_label`, `confidence_label` y `momentum_label` en `rates/temp
 - **Funciones:** `snake_case`, verbo + sustantivo (`compute_all`, `fetch_and_store`, `build_decision`)
 - **Constantes de dominio:** `UPPER_SNAKE_CASE` (`STRONG_BUY`, `DO_NOT_BUY`)
 - **Templates:** `snake_case.html`, partials en subdirectorio `partials/`
-- **URLs:** `snake_case` con nombres descriptivos (`stats_partial`, `refresh_data`)
+- **URL slugs:** siempre minúsculas (`usd-brl`, `uyu-brl`)
 
 ### Type hints
 
-Todas las funciones de servicios usan type hints. Usar `|` para union types (Python 3.10+):
+Todas las funciones de servicios usan type hints con `|` para unions (Python 3.10+):
 
 ```python
 def compute_ma(values: list[float], window: int) -> float | None: ...
+def compute_cross_pair() -> dict | None: ...
 ```
 
 ### Logging
@@ -226,66 +268,66 @@ Usar el logger del módulo, nunca `print()`:
 
 ```python
 logger = logging.getLogger(__name__)
-logger.info("Mensaje informativo")
-logger.warning("Alerta disparada")
-logger.error("Error recuperable")
+logger.info("Fetching 90 days of USD-BRL")
+logger.warning("ALERTA: señal disparada")
+logger.error("Error al enviar webhook")
 ```
-
-Los niveles de log están configurados en `config/settings.py`. El logger `rates` está en nivel `INFO`; el resto en `WARNING`.
 
 ---
 
-## Cómo agregar una nueva señal
+## Cómo añadir un nuevo par cambiario
 
-1. Agregar la constante en `rates/services/decision.py`:
+1. Insertar en la BD (o crear una migración de datos):
+   ```python
+   pair = CurrencyPair.objects.create(
+       code="EUR-BRL", name="Euro / Real", api_code="EUR-BRL", active=True
+   )
+   PairConfig.objects.create(pair=pair)
+   ```
+
+2. Poblar histórico:
+   ```bash
+   uv run python manage.py fetch_rates --pair eur-brl --days 90
+   ```
+
+3. El par aparece automáticamente en la navegación, en el overview y en el comparador de rutas si se actualiza `cross_pair.py` para incluirlo.
+
+## Cómo añadir una nueva señal
+
+1. Añadir la constante en `services/decision.py`:
    ```python
    EXTREME_BUY = "EXTREME BUY"
    ```
-
-2. Actualizar `SIGNAL_MULTIPLIERS` y `SIGNAL_CSS` en el mismo archivo.
-
+2. Actualizar `SIGNAL_MULTIPLIERS` y `SIGNAL_CSS`.
 3. Actualizar `get_signal()` con la nueva condición.
+4. Añadir la traducción en `rates/translations.py`.
+5. Actualizar los bloques `{% if %}` en los templates.
 
-4. Agregar la traducción en `rates/translations.py`:
-   ```python
-   SIGNAL_LABELS["EXTREME BUY"] = "COMPRA EXTREMA"
-   ```
+## Cómo añadir un nuevo indicador
 
-5. Actualizar los bloques `{% if %}` en los templates para manejar el nuevo valor.
-
----
-
-## Cómo agregar un nuevo indicador
-
-1. Escribir una función pura en `rates/services/indicators.py` con tipo de retorno explícito.
-
-2. Agregar el resultado al dict que devuelve `compute_all()`.
-
-3. Usar el indicador en `build_decision()` si afecta a la señal.
-
-4. Mostrarlo en `rates/templates/rates/partials/stats.html`.
+1. Escribir una función pura en `services/indicators.py`.
+2. Añadir el resultado al dict de `compute_all()`.
+3. Usarlo en `build_decision()` si afecta la señal.
+4. Mostrarlo en `partials/stats.html`.
 
 ---
 
 ## Testing
 
-Los servicios son funciones puras → se testean sin base de datos ni cliente HTTP.
+Los servicios son funciones puras → se testean sin base de datos ni HTTP:
 
 ```python
-# tests/test_indicators.py
 from rates.services.indicators import compute_deviation, compute_momentum
+from rates.services.cross_pair import compute_cross_pair
 
 def test_deviation_positiva():
     assert compute_deviation(5.80, 5.50) == pytest.approx(5.45, rel=1e-2)
 
 def test_momentum_al_alza():
     assert compute_momentum([5.0, 5.1, 5.2]) == "up"
-
-def test_momentum_neutral():
-    assert compute_momentum([5.0, 5.2, 5.1]) == "neutral"
 ```
 
-Para testear views que hacen queries, usar `@pytest.mark.django_db` con fixtures de pytest-django.
+Para testear views con queries, usar `@pytest.mark.django_db` con fixtures de pytest-django.
 
 ---
 
@@ -296,13 +338,13 @@ Para testear views que hacen queries, usar `@pytest.mark.django_db` con fixtures
 | `SECRET_KEY` | *(valor de desarrollo)* | Clave secreta de Django. Cambiar en producción. |
 | `DEBUG` | `True` | Poner en `False` para producción. |
 | `ALLOWED_HOSTS` | `*` | Lista de hosts separados por coma. |
+| `ACCESS_PASSCODE` | *(vacío)* | Código de acceso al sitio. Vacío = sin protección. |
 
 Ejemplo de `.env` para producción:
 
 ```env
 SECRET_KEY=tu-clave-secreta-larga-y-aleatoria
 DEBUG=False
-ALLOWED_HOSTS=tudominio.com,www.tudominio.com
+ALLOWED_HOSTS=tudominio.com
+ACCESS_PASSCODE=tu-codigo-secreto
 ```
-
-Cargar con `python-dotenv` o pasar directamente como variables de entorno del sistema.
