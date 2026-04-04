@@ -53,8 +53,12 @@ class Command(BaseCommand):
         cross = compute_cross_pair()
         if cross:
             self.stdout.write("\n── UYU → BRL Route Comparator ──────────────────")
-            self.stdout.write(f"  Direct route   (UYU→BRL):         {cross['direct_rate']:.6f} BRL/UYU")
-            self.stdout.write(f"  Indirect route (UYU→USD→BRL):     {cross['indirect_rate']:.6f} BRL/UYU")
+            self.stdout.write(
+                f"  Direct route   (UYU→BRL):         {cross['direct_rate']:.6f} BRL/UYU"
+            )
+            self.stdout.write(
+                f"  Indirect route (UYU→USD→BRL):     {cross['indirect_rate']:.6f} BRL/UYU"
+            )
             best = "DIRECT" if cross["best_route"] == "direct" else "INDIRECT"
             self.stdout.write(
                 self.style.SUCCESS(
@@ -72,9 +76,7 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f"  Error fetching {pair.code}: {exc}"))
             return
 
-        self.stdout.write(
-            self.style.SUCCESS(f"  {created} new records, {updated} updated")
-        )
+        self.stdout.write(self.style.SUCCESS(f"  {created} new records, {updated} updated"))
 
         rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
         if not rates_list:
@@ -83,21 +85,19 @@ class Command(BaseCommand):
 
         config, _ = PairConfig.objects.get_or_create(pair=pair)
         indicators = compute_all(rates_list)
-        decision   = build_decision(indicators, config)
+        decision = build_decision(indicators, config)
 
-        signal_es    = SIGNAL_LABELS.get(decision["signal"], decision["signal"])
+        signal_es = SIGNAL_LABELS.get(decision["signal"], decision["signal"])
         confidence_es = CONFIDENCE_LABELS.get(decision["confidence"], decision["confidence"])
-        momentum_es  = MOMENTUM_LABELS.get(indicators["momentum"], indicators["momentum"])
-        direction    = "above" if indicators["deviation"] > 0 else "below"
+        momentum_es = MOMENTUM_LABELS.get(indicators["momentum"], indicators["momentum"])
+        direction = "above" if indicators["deviation"] > 0 else "below"
 
         self.stdout.write(f"  ── Indicators {pair.code} ───────────────────────")
         self.stdout.write(f"    Date:        {indicators['current_date']}")
         self.stdout.write(f"    Rate:        {indicators['current_rate']:.4f}")
         self.stdout.write(f"    MA 30:       {indicators['ma30']:.4f}")
         self.stdout.write(f"    MA 90:       {indicators['ma90']:.4f}")
-        self.stdout.write(
-            f"    Deviation:   {indicators['deviation']:+.2f}%  ({direction} MA90)"
-        )
+        self.stdout.write(f"    Deviation:   {indicators['deviation']:+.2f}%  ({direction} MA90)")
         self.stdout.write(
             f"    Momentum:    {momentum_es}   Volatility: {indicators['volatility']:.4f}"
         )

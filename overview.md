@@ -24,7 +24,7 @@ calculates in real time which route yields more BRL per Uruguayan peso.
 | UYU-USD | How many dollars per 1 Uruguayan peso | Indirect route (step 1) |
 | UYU-BRL | How many reais per 1 Uruguayan peso  | Direct route            |
 
-**Data source:** [AwesomeAPI](https://economia.awesomeapi.com.br)
+**Data source:** [AwesomeAPI](https://economia.awesomeapi.com.br) — public endpoint by default; set `AWESOMEAPI_KEY` for higher rate limits
 **UI language:** Spanish (Spain/Cuba)
 **Database:** SQLite
 
@@ -162,10 +162,10 @@ Payload includes: pair, signal, rate, deviation, confidence, suggested amount.
 
 ```bash
 # Fetch all active pairs (90 days by default)
-uv run python manage.py fetch_rates
+uv run manage.py fetch_rates
 
 # Specific pair, last 3 days, no alerts
-uv run python manage.py fetch_rates --pair usd-brl --days 3 --no-alerts
+uv run manage.py fetch_rates --pair usd-brl --days 3 --no-alerts
 ```
 
 Prints indicators per pair and the route comparator at the end.
@@ -179,13 +179,13 @@ Prints indicators per pair and the route comparator at the end.
 uv sync
 
 # Apply migrations (includes the 3 pairs and migrated data)
-uv run python manage.py migrate
+uv run manage.py migrate
 
 # Seed initial rates
-uv run python manage.py fetch_rates
+uv run manage.py fetch_rates
 
 # Start server
-uv run python manage.py runserver
+uv run manage.py runserver
 ```
 
 Open `http://localhost:8000` — redirects to `/overview/`.

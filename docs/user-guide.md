@@ -23,13 +23,13 @@ cd rates_monitor
 uv sync
 
 # 3. Create the database (includes the three pairs automatically)
-uv run python manage.py migrate
+uv run manage.py migrate
 
 # 4. Fetch the last 90 days of rates for all pairs
-uv run python manage.py fetch_rates
+uv run manage.py fetch_rates
 
 # 5. Start the server
-uv run python manage.py runserver
+uv run manage.py runserver
 ```
 
 Open your browser at **http://localhost:8000**.
@@ -41,7 +41,7 @@ environment variable before starting:
 
 ```bash
 export ACCESS_PASSCODE=your-secret-code
-uv run python manage.py runserver
+uv run manage.py runserver
 ```
 
 With the passcode configured, the first time you visit the site you will see an
@@ -215,7 +215,7 @@ To keep data up to date without manual intervention, configure a cron job:
 
 ```bash
 # Update all pairs every hour (weekdays)
-0 * * * 1-5 cd /path/to/project && uv run python manage.py fetch_rates --days 3
+0 * * * 1-5 cd /path/to/project && uv run manage.py fetch_rates --days 3
 ```
 
 The `--days 3` option fetches the last 3 days, ensuring no rate is missed due
@@ -224,13 +224,13 @@ to timezone differences.
 For the initial load or to update the full history:
 
 ```bash
-uv run python manage.py fetch_rates --days 365
+uv run manage.py fetch_rates --days 365
 ```
 
 ### Command options
 
 ```
-uv run python manage.py fetch_rates [options]
+uv run manage.py fetch_rates [options]
 
   --days N        Number of days to fetch (default: 90)
   --pair CODE     Specific pair to update (e.g. usd-brl). Default: all active.
@@ -247,7 +247,7 @@ UYU → BRL route comparator in the console.
 Access `/admin/` to view and edit records directly. First create a superuser:
 
 ```bash
-uv run python manage.py createsuperuser
+uv run manage.py createsuperuser
 ```
 
 From the admin you can manage the three pairs, view the rate history filtered by
@@ -263,7 +263,9 @@ times if you run `fetch_rates` more than once during the day.
 
 **Do I need an API key?**
 No. The system uses [awesomeapi.com.br](https://economia.awesomeapi.com.br), a
-free public API with no authentication.
+free public API. An API key is optional — set `AWESOMEAPI_KEY` in your `.env`
+to authenticate requests and get a higher rate limit. Without a key the public
+unauthenticated endpoint is used, which is sufficient for personal use.
 
 **What happens if the API doesn't respond?**
 The "↻ Actualizar" button shows a spinner while trying to fetch data. If it

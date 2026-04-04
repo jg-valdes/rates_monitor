@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime, timezone
 
 import requests
@@ -8,6 +9,7 @@ from rates.models import ExchangeRate
 logger = logging.getLogger(__name__)
 
 API_URL = "https://economia.awesomeapi.com.br/json/daily/{pair}/{days}"
+_API_KEY = os.environ.get("AWESOMEAPI_KEY", "")
 
 
 def fetch_and_store(pair, days: int = 90) -> tuple[int, int]:
@@ -15,12 +17,16 @@ def fetch_and_store(pair, days: int = 90) -> tuple[int, int]:
     Fetch last `days` days of rates for `pair` from awesomeapi and upsert into DB.
     `pair` must be a CurrencyPair instance.
     Returns (created_count, updated_count).
+
+    Set AWESOMEAPI_KEY in the environment to authenticate requests and get a
+    higher rate limit from the AwesomeAPI.
     """
     url = API_URL.format(pair=pair.api_code, days=days)
+    headers = {"x-api-key": _API_KEY} if _API_KEY else {}
     logger.info(f"Fetching {days} days of {pair.code} from {url}")
 
     try:
-        response = requests.get(url, timeout=15)
+        response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
         data = response.json()
     except requests.RequestException as exc:

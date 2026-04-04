@@ -137,6 +137,8 @@ def fetch_and_store(pair: CurrencyPair, days: int = 90) -> tuple[int, int]:
 ```
 
 - Uses `pair.api_code` to build the AwesomeAPI URL.
+- If `AWESOMEAPI_KEY` is set in the environment, it is passed as `?token=` for
+  higher rate limits; otherwise the public unauthenticated endpoint is used.
 - Uses `update_or_create(pair=pair, date=rate_date, ...)` to be idempotent.
 - Raises exceptions — the caller decides what to do.
 
@@ -318,7 +320,7 @@ logger.error("Error sending webhook")
 
 2. Seed historical data:
    ```bash
-   uv run python manage.py fetch_rates --pair eur-brl --days 90
+   uv run manage.py fetch_rates --pair eur-brl --days 90
    ```
 
 3. The pair appears automatically in the navigation, in the overview, and in the
@@ -344,6 +346,24 @@ logger.error("Error sending webhook")
 
 ---
 
+## Code quality
+
+[ruff](https://docs.astral.sh/ruff/) is used for formatting and linting. It is
+a dev-only dependency (not installed in Docker production builds).
+
+```bash
+# Format all Python files
+uv run ruff format .
+
+# Lint (and auto-fix what can be fixed)
+uv run ruff check --fix .
+```
+
+Configuration lives in `pyproject.toml` under `[tool.ruff]`. The selected rules
+are `E` (pycodestyle errors), `F` (pyflakes), and `I` (isort import order).
+
+---
+
 ## Testing
 
 Services are pure functions → testable without a database or HTTP:
@@ -365,13 +385,14 @@ To test views with queries, use `@pytest.mark.django_db` with pytest-django fixt
 
 ## Environment variables
 
-| Variable | Default | Description                                                 |
-|---|---|-------------------------------------------------------------|
-| `SECRET_KEY` | *(dev value)* | Django secret key. Change in production.                    |
-| `DEBUG` | `True` | Set to `False` for production.                              |
-| `CORS_ALLOWED_ORIGINS_EXTRA` | `*` | Comma-separated list of allowed hosts.                      |
-| `CSRF_TRUSTED_ORIGINS_EXTRA` | `*` | Comma-separated list of trusted hosts for csrf validations. |
-| `ACCESS_PASSCODE` | *(empty)* | Site access passcode. Empty = no protection.                |
+| Variable | Default | Description |
+|---|---|---|
+| `SECRET_KEY` | *(dev value)* | Django secret key. Change in production. |
+| `DEBUG` | `True` | Set to `False` for production. |
+| `CORS_ALLOWED_ORIGINS_EXTRA` | `*` | Comma-separated list of allowed hosts. |
+| `CSRF_TRUSTED_ORIGINS_EXTRA` | `*` | Comma-separated list of trusted hosts for CSRF validation. |
+| `ACCESS_PASSCODE` | *(empty)* | Site access passcode. Empty = no protection. |
+| `AWESOMEAPI_KEY` | *(empty)* | Optional API key for AwesomeAPI — unlocks higher rate limits. |
 
 Example `.env` for production:
 
@@ -381,4 +402,5 @@ DEBUG=False
 CORS_ALLOWED_ORIGINS_EXTRA=yourdomain.com
 CSRF_TRUSTED_ORIGINS_EXTRA=yourdomain.com
 ACCESS_PASSCODE=your-secret-code
+AWESOMEAPI_KEY=your-awesomeapi-token
 ```

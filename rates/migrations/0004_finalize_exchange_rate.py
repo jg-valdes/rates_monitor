@@ -5,12 +5,11 @@ Schema migration:
 - Delete the UserConfig model (superseded by PairConfig).
 """
 
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("rates", "0003_seed_pairs"),
     ]

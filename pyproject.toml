@@ -9,3 +9,15 @@ dependencies = [
     "gunicorn>=25.3.0",
     "requests>=2.33.1",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.9",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

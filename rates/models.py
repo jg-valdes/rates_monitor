@@ -2,9 +2,9 @@ from django.db import models
 
 
 class CurrencyPair(models.Model):
-    code = models.CharField(max_length=10, unique=True)   # "USD-BRL"
-    name = models.CharField(max_length=60)                # "Dólar / Real"
-    api_code = models.CharField(max_length=10)            # AwesomeAPI pair code
+    code = models.CharField(max_length=10, unique=True)  # "USD-BRL"
+    name = models.CharField(max_length=60)  # "Dólar / Real"
+    api_code = models.CharField(max_length=10)  # AwesomeAPI pair code
     active = models.BooleanField(default=True)
 
     class Meta:
@@ -49,12 +49,12 @@ class ExchangeRate(models.Model):
 class Purchase(models.Model):
     """Records an actual conversion executed by the user for a given pair."""
 
-    pair            = models.ForeignKey(CurrencyPair, on_delete=models.CASCADE, related_name="purchases")
-    date            = models.DateField()
-    amount_spent    = models.FloatField()   # in pair's base currency
-    amount_received = models.FloatField()   # in pair's quote currency
-    note            = models.CharField(max_length=200, blank=True, default="")
-    created_at      = models.DateTimeField(auto_now_add=True)
+    pair = models.ForeignKey(CurrencyPair, on_delete=models.CASCADE, related_name="purchases")
+    date = models.DateField()
+    amount_spent = models.FloatField()  # in pair's base currency
+    amount_received = models.FloatField()  # in pair's quote currency
+    note = models.CharField(max_length=200, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-date", "-created_at"]

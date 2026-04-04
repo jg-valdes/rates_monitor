@@ -17,7 +17,7 @@ RUN uv sync --frozen --no-dev
 COPY . .
 
 # Collect static files (no-op today since assets are CDN-only)
-RUN uv run python manage.py collectstatic --noinput
+RUN uv run manage.py collectstatic --noinput
 
 # Persistent data directory (overridden by DATA_DIR env var → Docker volume)
 RUN mkdir -p /app/data

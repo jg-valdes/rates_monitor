@@ -12,15 +12,15 @@ from rates.services.decision import build_decision
 from rates.services.fetcher import fetch_and_store
 from rates.services.indicators import compute_all, compute_rolling_ma
 
-
 # ── Auth ──────────────────────────────────────────────────────────────────────
+
 
 def login_view(request):
     if request.method == "POST":
         submitted = request.POST.get("passcode", "")
-        expected  = getattr(settings, "ACCESS_PASSCODE", "")
+        expected = getattr(settings, "ACCESS_PASSCODE", "")
         if expected and hmac.compare_digest(submitted, expected):
-            token    = signing.dumps("ok")
+            token = signing.dumps("ok")
             response = redirect(request.GET.get("next", "/"))
             response.set_cookie(
                 "rm_access",
@@ -43,20 +43,23 @@ def logout_view(request):
 
 # ── Overview ──────────────────────────────────────────────────────────────────
 
+
 def overview(request):
     pairs = list(CurrencyPair.objects.filter(active=True))
     summaries = []
     for pair in pairs:
         rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
-        config     = _get_or_create_config(pair)
+        config = _get_or_create_config(pair)
         indicators = compute_all(rates_list)
-        decision   = build_decision(indicators, config) if indicators else None
-        summaries.append({
-            "pair":       pair,
-            "indicators": indicators,
-            "decision":   decision,
-            "totals":     _purchase_totals(pair),
-        })
+        decision = build_decision(indicators, config) if indicators else None
+        summaries.append(
+            {
+                "pair": pair,
+                "indicators": indicators,
+                "decision": decision,
+                "totals": _purchase_totals(pair),
+            }
+        )
 
     cross = compute_cross_pair()
     return render(request, "rates/overview.html", {"summaries": summaries, "cross": cross})
@@ -64,23 +67,24 @@ def overview(request):
 
 # ── Dashboard (per pair) ───────────────────────────────────────────────────────
 
+
 def dashboard(request, pair_code):
-    pair       = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
-    config     = _get_or_create_config(pair)
+    pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    config = _get_or_create_config(pair)
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
-    ctx        = _build_context(pair, rates_list, config)
+    ctx = _build_context(pair, rates_list, config)
     ctx["purchases"] = Purchase.objects.filter(pair=pair)
-    ctx["totals"]    = _purchase_totals(pair)
+    ctx["totals"] = _purchase_totals(pair)
     return render(request, "rates/dashboard.html", ctx)
 
 
 @require_http_methods(["GET"])
 def stats_partial(request, pair_code):
-    pair       = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
-    config     = _get_or_create_config(pair)
+    pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    config = _get_or_create_config(pair)
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
     indicators = compute_all(rates_list)
-    decision   = build_decision(indicators, config) if indicators else None
+    decision = build_decision(indicators, config) if indicators else None
     return render(
         request,
         "rates/partials/stats.html",
@@ -90,7 +94,7 @@ def stats_partial(request, pair_code):
 
 @require_http_methods(["POST"])
 def refresh_data(request, pair_code):
-    pair   = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
     config = _get_or_create_config(pair)
     try:
         fetch_and_store(pair, days=3)
@@ -98,7 +102,7 @@ def refresh_data(request, pair_code):
         pass  # fail silently — stale data is better than an error page
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
     indicators = compute_all(rates_list)
-    decision   = build_decision(indicators, config) if indicators else None
+    decision = build_decision(indicators, config) if indicators else None
     return render(
         request,
         "rates/partials/stats.html",
@@ -108,14 +112,14 @@ def refresh_data(request, pair_code):
 
 @require_http_methods(["POST"])
 def update_config(request, pair_code):
-    pair   = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
     config = _get_or_create_config(pair)
-    p      = request.POST
+    p = request.POST
 
     def _float(key, default):
         try:
             return float(p[key])
-        except (KeyError, ValueError, TypeError):
+        except KeyError, ValueError, TypeError:
             return default
 
     def _float_or_none(key):
@@ -125,14 +129,14 @@ def update_config(request, pair_code):
         except ValueError:
             return None
 
-    config.monthly_budget          = _float("monthly_budget", config.monthly_budget)
-    config.threshold_strong_buy    = _float("threshold_strong_buy", config.threshold_strong_buy)
-    config.threshold_moderate_buy  = _float("threshold_moderate_buy", config.threshold_moderate_buy)
-    config.threshold_do_not_buy    = _float("threshold_do_not_buy", config.threshold_do_not_buy)
-    config.alert_webhook_url       = p.get("alert_webhook_url", config.alert_webhook_url).strip()
-    config.alert_on_strong_buy     = "alert_on_strong_buy" in p
+    config.monthly_budget = _float("monthly_budget", config.monthly_budget)
+    config.threshold_strong_buy = _float("threshold_strong_buy", config.threshold_strong_buy)
+    config.threshold_moderate_buy = _float("threshold_moderate_buy", config.threshold_moderate_buy)
+    config.threshold_do_not_buy = _float("threshold_do_not_buy", config.threshold_do_not_buy)
+    config.alert_webhook_url = p.get("alert_webhook_url", config.alert_webhook_url).strip()
+    config.alert_on_strong_buy = "alert_on_strong_buy" in p
     config.alert_on_deviation_above = _float_or_none("alert_on_deviation_above")
-    config.alert_on_rate_above      = _float_or_none("alert_on_rate_above")
+    config.alert_on_rate_above = _float_or_none("alert_on_rate_above")
     config.save()
 
     if request.headers.get("HX-Request"):
@@ -146,6 +150,7 @@ def update_config(request, pair_code):
 
 # ── Purchases ─────────────────────────────────────────────────────────────────
 
+
 @require_http_methods(["POST"])
 def add_purchase(request, pair_code):
     pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
@@ -157,12 +162,16 @@ def add_purchase(request, pair_code):
             amount_received=float(request.POST["amount_received"]),
             note=request.POST.get("note", "").strip(),
         )
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         pass
     return render(
         request,
         "rates/partials/purchases.html",
-        {"pair": pair, "purchases": Purchase.objects.filter(pair=pair), "totals": _purchase_totals(pair)},
+        {
+            "pair": pair,
+            "purchases": Purchase.objects.filter(pair=pair),
+            "totals": _purchase_totals(pair),
+        },
     )
 
 
@@ -173,24 +182,29 @@ def delete_purchase(request, pair_code, pk):
     return render(
         request,
         "rates/partials/purchases.html",
-        {"pair": pair, "purchases": Purchase.objects.filter(pair=pair), "totals": _purchase_totals(pair)},
+        {
+            "pair": pair,
+            "purchases": Purchase.objects.filter(pair=pair),
+            "totals": _purchase_totals(pair),
+        },
     )
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _purchase_totals(pair) -> dict | None:
     qs = Purchase.objects.filter(pair=pair)
     if not qs.exists():
         return None
-    total_spent    = sum(p.amount_spent    for p in qs)
+    total_spent = sum(p.amount_spent for p in qs)
     total_received = sum(p.amount_received for p in qs)
-    avg_rate       = round(total_received / total_spent, 6) if total_spent else 0.0
+    avg_rate = round(total_received / total_spent, 6) if total_spent else 0.0
     return {
-        "total_spent":    round(total_spent, 2),
+        "total_spent": round(total_spent, 2),
         "total_received": round(total_received, 2),
-        "avg_rate":       avg_rate,
-        "count":          qs.count(),
+        "avg_rate": avg_rate,
+        "count": qs.count(),
     }
 
 
@@ -201,33 +215,33 @@ def _get_or_create_config(pair):
 
 def _build_context(pair, rates_list, config):
     indicators = compute_all(rates_list)
-    decision   = build_decision(indicators, config) if indicators else None
+    decision = build_decision(indicators, config) if indicators else None
 
     chart_rates = rates_list[-90:]
-    values      = [r.rate for r in chart_rates]
-    chart_data  = {
+    values = [r.rate for r in chart_rates]
+    chart_data = {
         "labels": [r.date.strftime("%d/%m/%y") for r in chart_rates],
         "values": values,
-        "ma30":   compute_rolling_ma(values, 30),
-        "ma90":   compute_rolling_ma(values, 90),
+        "ma30": compute_rolling_ma(values, 30),
+        "ma90": compute_rolling_ma(values, 90),
     }
 
     history = _compute_history(rates_list, config, n=30)
 
     return {
-        "pair":       pair,
+        "pair": pair,
         "indicators": indicators,
-        "decision":   decision,
-        "config":     config,
+        "decision": decision,
+        "config": config,
         "chart_data": json.dumps(chart_data),
-        "history":    history,
-        "has_data":   bool(rates_list),
+        "history": history,
+        "has_data": bool(rates_list),
     }
 
 
 def _compute_history(rates_list, config, n=30):
-    total  = len(rates_list)
-    start  = max(0, total - n)
+    total = len(rates_list)
+    start = max(0, total - n)
     history = []
     for i in range(start, total):
         subset = rates_list[: i + 1]
