@@ -1,5 +1,3 @@
-import hmac
-
 from django.conf import settings
 from django.core import signing
 from django.shortcuts import redirect
@@ -29,7 +27,7 @@ class PasscodeMiddleware:
             try:
                 signing.loads(token, max_age=86400)
                 return self.get_response(request)
-            except (signing.BadSignature, signing.SignatureExpired):
+            except signing.BadSignature, signing.SignatureExpired:
                 pass
 
         next_url = request.get_full_path()

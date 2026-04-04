@@ -1,9 +1,8 @@
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("rates", "0004_finalize_exchange_rate"),
     ]
@@ -12,12 +11,20 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="Purchase",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("pair", models.ForeignKey(
-                    on_delete=django.db.models.deletion.CASCADE,
-                    related_name="purchases",
-                    to="rates.currencypair",
-                )),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                (
+                    "pair",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="purchases",
+                        to="rates.currencypair",
+                    ),
+                ),
                 ("date", models.DateField()),
                 ("amount_spent", models.FloatField()),
                 ("amount_received", models.FloatField()),

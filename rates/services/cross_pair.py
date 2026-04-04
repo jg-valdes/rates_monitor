@@ -40,7 +40,7 @@ def compute_cross_pair() -> dict | None:
     if None in (uyu_brl, uyu_usd, usd_brl):
         return None
 
-    direct_rate   = uyu_brl
+    direct_rate = uyu_brl
     indirect_rate = uyu_usd * usd_brl
 
     if direct_rate >= indirect_rate:
@@ -51,11 +51,11 @@ def compute_cross_pair() -> dict | None:
         advantage_pct = (indirect_rate - direct_rate) / direct_rate * 100
 
     return {
-        "direct_rate":    round(direct_rate, 6),
-        "indirect_rate":  round(indirect_rate, 6),
-        "best_route":     best_route,
-        "advantage_pct":  round(advantage_pct, 4),
-        "uyu_brl":        round(uyu_brl, 6),
-        "uyu_usd":        round(uyu_usd, 6),
-        "usd_brl":        round(usd_brl, 6),
+        "direct_rate": round(direct_rate, 6),
+        "indirect_rate": round(indirect_rate, 6),
+        "best_route": best_route,
+        "advantage_pct": round(advantage_pct, 4),
+        "uyu_brl": round(uyu_brl, 6),
+        "uyu_usd": round(uyu_usd, 6),
+        "usd_brl": round(usd_brl, 6),
     }

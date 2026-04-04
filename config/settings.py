@@ -1,5 +1,5 @@
-from pathlib import Path
 import os
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -11,11 +11,21 @@ DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = ["*"]
 
-_cors_extra = [h.strip() for h in os.environ.get("CORS_ALLOWED_ORIGINS_EXTRA", default="").split(",") if h.strip()]
-CORS_ALLOWED_ORIGINS = [*_cors_extra]
+if not DEBUG:
 
-_csrf_extra = [h.strip() for h in os.environ.get("CSRF_TRUSTED_ORIGINS_EXTRA", default="").split(",") if h.strip()]
-CSRF_TRUSTED_ORIGINS = [*_csrf_extra]
+    def _origins(env_var: str) -> list[str]:
+        """Parse a comma-separated list of hostnames/origins and ensure each has a scheme."""
+        result = []
+        for h in os.environ.get(env_var, "").split(","):
+            h = h.strip()
+            if not h:
+                continue
+            if not h.startswith(("http://", "https://")):
+                h = f"https://{h}"
+            result.append(h)
+        return result
+
+    CSRF_TRUSTED_ORIGINS = _origins("CSRF_TRUSTED_ORIGINS_EXTRA")
 
 # Set this in .env to enable the passcode gate. Leave empty to disable in dev.
 ACCESS_PASSCODE = os.environ.get("ACCESS_PASSCODE", "")
@@ -95,11 +105,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # django-crontab resolves the Python executable and manage.py path at install
 # time. Pointing to sys.executable ensures the venv Python is used, which is
 # correct both in Docker (/app/.venv/bin/python) and in local dev.
-import sys as _sys
+import sys as _sys  # noqa: E402
 
 CRONTAB_PYTHON_EXECUTABLE = _sys.executable
 CRONTAB_DJANGO_MANAGE_PATH = str(BASE_DIR / "manage.py")
-CRONTAB_LOCK_JOBS = True   # prevents concurrent runs of the same job
+CRONTAB_LOCK_JOBS = True  # prevents concurrent runs of the same job
 
 CRONJOBS = [
     # Every hour — fetch last 3 days for all pairs, evaluate alerts

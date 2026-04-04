@@ -4,12 +4,11 @@ ExchangeRate, drop the per-field unique constraint on ExchangeRate.date
 (will be replaced by unique_together in 0004 after the data migration).
 """
 
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("rates", "0001_initial"),
     ]
@@ -18,7 +17,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="CurrencyPair",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("code", models.CharField(max_length=10, unique=True)),
                 ("name", models.CharField(max_length=60)),
                 ("api_code", models.CharField(max_length=10)),
@@ -52,12 +56,20 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="PairConfig",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("pair", models.OneToOneField(
-                    on_delete=django.db.models.deletion.CASCADE,
-                    related_name="config",
-                    to="rates.currencypair",
-                )),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                (
+                    "pair",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="config",
+                        to="rates.currencypair",
+                    ),
+                ),
                 ("monthly_budget", models.FloatField(default=1000.0)),
                 ("threshold_strong_buy", models.FloatField(default=3.0)),
                 ("threshold_moderate_buy", models.FloatField(default=1.5)),

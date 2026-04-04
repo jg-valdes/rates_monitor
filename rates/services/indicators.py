@@ -2,6 +2,7 @@
 Pure functions for computing exchange rate indicators.
 All functions accept lists of floats ordered oldest → newest.
 """
+
 from statistics import mean
 
 
@@ -38,7 +39,7 @@ def compute_volatility(values: list[float], window: int = 14) -> float:
     """Average absolute daily change over the last `window` days."""
     if len(values) < 2:
         return 0.0
-    recent = values[-(window + 1):]
+    recent = values[-(window + 1) :]
     changes = [abs(recent[i] - recent[i - 1]) for i in range(1, len(recent))]
     return round(mean(changes), 4) if changes else 0.0
 

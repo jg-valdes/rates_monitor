@@ -8,19 +8,18 @@ Data migration:
 
 from django.db import migrations
 
-
 PAIRS = [
-    {"code": "USD-BRL", "name": "Dólar / Real",             "api_code": "USD-BRL"},
-    {"code": "UYU-USD", "name": "Peso Uruguayo / Dólar",    "api_code": "UYU-USD"},
-    {"code": "UYU-BRL", "name": "Peso Uruguayo / Real",     "api_code": "UYU-BRL"},
+    {"code": "USD-BRL", "name": "Dólar / Real", "api_code": "USD-BRL"},
+    {"code": "UYU-USD", "name": "Peso Uruguayo / Dólar", "api_code": "UYU-USD"},
+    {"code": "UYU-BRL", "name": "Peso Uruguayo / Real", "api_code": "UYU-BRL"},
 ]
 
 
 def forwards(apps, schema_editor):
     CurrencyPair = apps.get_model("rates", "CurrencyPair")
     ExchangeRate = apps.get_model("rates", "ExchangeRate")
-    PairConfig   = apps.get_model("rates", "PairConfig")
-    UserConfig   = apps.get_model("rates", "UserConfig")
+    PairConfig = apps.get_model("rates", "PairConfig")
+    UserConfig = apps.get_model("rates", "UserConfig")
 
     # Create pairs
     pairs = {}
@@ -63,7 +62,6 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("rates", "0002_currency_pair_pair_config"),
     ]

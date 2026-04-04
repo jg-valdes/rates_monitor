@@ -4,42 +4,50 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='ExchangeRate',
+            name="ExchangeRate",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date', models.DateField(unique=True)),
-                ('rate', models.FloatField()),
-                ('high', models.FloatField(blank=True, null=True)),
-                ('low', models.FloatField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("date", models.DateField(unique=True)),
+                ("rate", models.FloatField()),
+                ("high", models.FloatField(blank=True, null=True)),
+                ("low", models.FloatField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'ordering': ['date'],
+                "ordering": ["date"],
             },
         ),
         migrations.CreateModel(
-            name='UserConfig',
+            name="UserConfig",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('monthly_usd_budget', models.FloatField(default=1000.0)),
-                ('threshold_strong_buy', models.FloatField(default=3.0)),
-                ('threshold_moderate_buy', models.FloatField(default=1.5)),
-                ('threshold_do_not_buy', models.FloatField(default=-1.0)),
-                ('alert_webhook_url', models.URLField(blank=True, default='')),
-                ('alert_on_strong_buy', models.BooleanField(default=True)),
-                ('alert_on_deviation_above', models.FloatField(blank=True, null=True)),
-                ('alert_on_rate_above', models.FloatField(blank=True, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("monthly_usd_budget", models.FloatField(default=1000.0)),
+                ("threshold_strong_buy", models.FloatField(default=3.0)),
+                ("threshold_moderate_buy", models.FloatField(default=1.5)),
+                ("threshold_do_not_buy", models.FloatField(default=-1.0)),
+                ("alert_webhook_url", models.URLField(blank=True, default="")),
+                ("alert_on_strong_buy", models.BooleanField(default=True)),
+                ("alert_on_deviation_above", models.FloatField(blank=True, null=True)),
+                ("alert_on_rate_above", models.FloatField(blank=True, null=True)),
             ],
             options={
-                'verbose_name': 'Configuration',
+                "verbose_name": "Configuration",
             },
         ),
     ]
