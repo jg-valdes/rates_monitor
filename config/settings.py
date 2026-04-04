@@ -8,7 +8,12 @@ SECRET_KEY = os.environ.get(
     "dev-only-key-change-this-for-production-xk2p9mq7vc",
 )
 DEBUG = os.environ.get("DEBUG", "True") == "True"
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
+
+_cors_extra = [h.strip() for h in os.environ.get("CORS_ALLOWED_ORIGINS_EXTRA", default="").split(",") if h.strip()]
+CORS_ALLOWED_ORIGINS = [*_cors_extra]
+
+_csrf_extra = [h.strip() for h in os.environ.get("CSRF_TRUSTED_ORIGINS_EXTRA", default="").split(",") if h.strip()]
+CSRF_TRUSTED_ORIGINS = [*_csrf_extra]
 
 # Set this in .env to enable the passcode gate. Leave empty to disable in dev.
 ACCESS_PASSCODE = os.environ.get("ACCESS_PASSCODE", "")

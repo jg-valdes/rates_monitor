@@ -57,7 +57,8 @@ Copy `.env.example` to `.env` and adjust the values:
 ```env
 SECRET_KEY=…          # Django secret key (required in production)
 DEBUG=False
-ALLOWED_HOSTS=…       # server domain or IP
+CORS_ALLOWED_ORIGINS_EXTRA=…       # server domain or IP
+CSRF_TRUSTED_ORIGINS_EXTRA=…       # server domain or IP
 ACCESS_PASSCODE=…     # access passcode (empty = no protection)
 DATA_DIR=             # database directory (Docker sets this automatically)
 ```
