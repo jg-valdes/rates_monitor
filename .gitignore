@@ -9,3 +9,5 @@ dist/
 .ruff_cache/
 .idea
 .claude
+staticfiles/
+data

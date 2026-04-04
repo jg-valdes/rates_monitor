@@ -1,44 +1,45 @@
-# Monitor Cambiario — Visión General del Proyecto
+# Exchange Rate Monitor — Project Overview
 
-## Objetivo
+## Goal
 
-Herramienta personal para encontrar la mejor ruta para convertir Pesos Uruguayos (UYU)
-a Reales Brasileños (BRL), con o sin pasar por Dólares (USD) como paso intermedio.
+Personal tool to find the best route for converting Uruguayan Pesos (UYU)
+to Brazilian Reais (BRL), with or without passing through Dollars (USD) as an
+intermediate step.
 
-El sistema monitorea 3 pares cambiarios individualmente (señales técnicas por par) y
-calcula en tiempo real cuál ruta produce más BRL por cada peso uruguayo.
+The system monitors 3 currency pairs individually (technical signals per pair) and
+calculates in real time which route yields more BRL per Uruguayan peso.
 
-**Rutas posibles:**
+**Possible routes:**
 
-| Ruta       | Camino          | Pares usados             |
-|------------|-----------------|--------------------------|
-| Directa    | UYU → BRL       | UYU-BRL                  |
-| Indirecta  | UYU → USD → BRL | UYU-USD + USD-BRL        |
+| Route     | Path            | Pairs used               |
+|-----------|-----------------|--------------------------|
+| Direct    | UYU → BRL       | UYU-BRL                  |
+| Indirect  | UYU → USD → BRL | UYU-USD + USD-BRL        |
 
-**Pares monitoreados:**
+**Monitored pairs:**
 
-| Par     | Significado                        | Rol en la decisión      |
-|---------|------------------------------------|-------------------------|
-| USD-BRL | Cuántos reales vale 1 dólar        | Ruta indirecta (paso 2) |
-| UYU-USD | Cuántos dólares vale 1 peso uru.   | Ruta indirecta (paso 1) |
-| UYU-BRL | Cuántos reales vale 1 peso uru.    | Ruta directa            |
+| Pair    | Meaning                              | Role in the decision    |
+|---------|--------------------------------------|-------------------------|
+| USD-BRL | How many reais per 1 dollar          | Indirect route (step 2) |
+| UYU-USD | How many dollars per 1 Uruguayan peso | Indirect route (step 1) |
+| UYU-BRL | How many reais per 1 Uruguayan peso  | Direct route            |
 
-**Fuente de datos:** [AwesomeAPI](https://economia.awesomeapi.com.br)
-**Idioma de la interfaz:** Español de España / Cuba
-**Base de datos:** SQLite
+**Data source:** [AwesomeAPI](https://economia.awesomeapi.com.br)
+**UI language:** Spanish (Spain/Cuba)
+**Database:** SQLite
 
 ---
 
-## Estado Actual — Implementado
+## Current Status — Implemented
 
-### Stack técnico
+### Tech stack
 
 - **Backend:** Python 3.14 + Django 6
 - **Frontend:** Django Templates + HTMX 2.0 + Tailwind CSS (CDN)
-- **Gráficos:** Chart.js 4.4
-- **Gestor de paquetes:** uv
+- **Charts:** Chart.js 4.4
+- **Package manager:** uv
 
-### Estructura del proyecto
+### Project structure
 
 ```
 rates_monitor/
@@ -49,26 +50,26 @@ rates_monitor/
 ├── rates/
 │   ├── models.py            # CurrencyPair, ExchangeRate, PairConfig
 │   ├── views.py             # login, logout, overview, dashboard, stats, refresh, config
-│   ├── urls.py              # rutas con slugs en minúsculas
+│   ├── urls.py              # routes with lowercase slugs
 │   ├── admin.py             # CurrencyPair, ExchangeRate, PairConfig
 │   ├── middleware.py        # PasscodeMiddleware
-│   ├── context_processors.py # inyecta all_pairs en cada template
-│   ├── translations.py      # etiquetas en español para constantes internas
+│   ├── context_processors.py # injects all_pairs into every template
+│   ├── translations.py      # Spanish labels for internal English constants
 │   ├── templatetags/
-│   │   └── rates_extras.py  # filtros: signal_label, confidence_label, momentum_label
+│   │   └── rates_extras.py  # filters: signal_label, confidence_label, momentum_label
 │   ├── services/
 │   │   ├── fetcher.py       # fetch_and_store(pair, days)
-│   │   ├── indicators.py    # MA, desviación, momentum, volatilidad
-│   │   ├── decision.py      # señal, confianza, asignación de capital
-│   │   ├── cross_pair.py    # comparador de rutas UYU→BRL
-│   │   └── alerts.py        # notificaciones vía webhook
+│   │   ├── indicators.py    # MA, deviation, momentum, volatility
+│   │   ├── decision.py      # signal, confidence, capital allocation
+│   │   ├── cross_pair.py    # UYU→BRL route comparator
+│   │   └── alerts.py        # webhook notifications
 │   ├── management/commands/
-│   │   └── fetch_rates.py   # CLI para obtener cotizaciones
+│   │   └── fetch_rates.py   # CLI command to fetch rates
 │   ├── migrations/
 │   │   ├── 0001_initial.py
 │   │   ├── 0002_currency_pair_pair_config.py  # schema
-│   │   ├── 0003_seed_pairs.py                 # datos iniciales
-│   │   └── 0004_finalize_exchange_rate.py     # restricciones + elimina UserConfig
+│   │   ├── 0003_seed_pairs.py                 # seed data
+│   │   └── 0004_finalize_exchange_rate.py     # constraints + removes UserConfig
 │   └── templates/rates/
 │       ├── login.html
 │       ├── overview.html
@@ -77,30 +78,30 @@ rates_monitor/
 │           ├── stats.html
 │           └── config_form.html
 └── templates/
-    └── base.html            # nav con tabs de pares + botón logout
+    └── base.html            # nav with pair tabs + logout button
 ```
 
-### Modelos
+### Models
 
 **`CurrencyPair`**
-- `code` — e.g. `"USD-BRL"` (único)
+- `code` — e.g. `"USD-BRL"` (unique)
 - `name` — e.g. `"Dólar / Real"`
-- `api_code` — código usado en la URL de AwesomeAPI
-- `active` — activo/inactivo
-- `slug` (property) — `code.lower()`, usado en URLs
+- `api_code` — code used in the AwesomeAPI URL
+- `active` — enabled/disabled
+- `slug` (property) — `code.lower()`, used in URLs
 
 **`ExchangeRate`**
-- `pair` → FK a `CurrencyPair`
+- `pair` → FK to `CurrencyPair`
 - `date`, `rate`, `high`, `low`, `created_at`
-- Restricción única: `(pair, date)`
+- Unique constraint: `(pair, date)`
 
-**`PairConfig`** (OneToOne con CurrencyPair)
+**`PairConfig`** (OneToOne with CurrencyPair)
 - `monthly_budget`, `threshold_strong_buy`, `threshold_moderate_buy`, `threshold_do_not_buy`
 - `alert_webhook_url`, `alert_on_strong_buy`, `alert_on_deviation_above`, `alert_on_rate_above`
 
 ### URLs
 
-| Método | URL                        | Vista            |
+| Method | URL                        | View             |
 |--------|----------------------------|------------------|
 | GET    | `/`                        | overview         |
 | GET    | `/login/`                  | login_view       |
@@ -112,109 +113,138 @@ rates_monitor/
 | POST   | `/<pair_code>/refresh/`    | refresh_data     |
 | POST   | `/<pair_code>/config/`     | update_config    |
 
-### Motor de indicadores (por par)
+### Indicators engine (per pair)
 
-- **MA 30 / MA 90** — media móvil simple
-- **Desviación** — `(cotización - MA90) / MA90 * 100`
-- **Momentum** — tendencia de los últimos 3 valores (`up` / `down` / `neutral`)
-- **Volatilidad** — cambio absoluto medio de los últimos 14 días
+- **MA 30 / MA 90** — simple moving average
+- **Deviation** — `(rate - MA90) / MA90 * 100`
+- **Momentum** — trend of the last 3 values (`up` / `down` / `neutral`)
+- **Volatility** — mean absolute daily change over the last 14 days
 
-### Motor de decisión (por par)
+### Decision engine (per pair)
 
-| Desviación        | Señal           | Asignación |
+| Deviation         | Signal          | Allocation |
 |-------------------|-----------------|------------|
 | > +3%             | STRONG BUY      | 150%       |
 | > +1.5%           | MODERATE BUY    | 100%       |
-| entre -1% y +1.5% | NEUTRAL         | 50%        |
+| between -1% and +1.5% | NEUTRAL    | 50%        |
 | < -1%             | DO NOT BUY      | 20%        |
 
-Confianza ajustada por momentum: `STRONG BUY + up = HIGH`, etc.
+Confidence adjusted by momentum: `STRONG BUY + up = HIGH`, etc.
 
-### Comparador de rutas (cross_pair.py)
+### Route comparator (cross_pair.py)
 
 ```
-direct_rate   = cotización UYU-BRL             (BRL por 1 UYU)
-indirect_rate = cotización UYU-USD × USD-BRL   (BRL por 1 UYU vía USD)
-mejor_ruta    = la que produce más BRL por peso
+direct_rate   = UYU-BRL rate             (BRL per 1 UYU)
+indirect_rate = UYU-USD rate × USD-BRL   (BRL per 1 UYU via USD)
+best_route    = whichever yields more BRL per peso
 ```
 
-Mostrado en `/overview/` con ventaja porcentual.
+Shown on `/overview/` with percentage advantage.
 
-### Seguridad
+### Security
 
-- `ACCESS_PASSCODE` en `.env` activa la protección (vacío = desactivado en dev)
-- `PasscodeMiddleware` bloquea todas las rutas excepto `/login/` y `/logout/`
-- Comparación con `hmac.compare_digest` (tiempo constante)
-- Token firmado con `signing.dumps()` almacenado en cookie `rm_access`
-  (`httponly`, `samesite=Lax`, `secure` en producción, caducidad 24 h)
+- `ACCESS_PASSCODE` in `.env` activates protection (empty = disabled in dev)
+- `PasscodeMiddleware` blocks all routes except `/login/` and `/logout/`
+- Comparison with `hmac.compare_digest` (constant-time)
+- Signed token with `signing.dumps()` stored in `rm_access` cookie
+  (`httponly`, `samesite=Lax`, `secure` in production, 24h expiry)
 
-### Alertas
+### Alerts
 
-Webhook configurable por par. Se dispara cuando:
-- Señal STRONG BUY activa (si habilitado)
-- Desviación supera umbral configurado
-- Cotización supera umbral configurado
+Configurable webhook per pair. Fires when:
+- STRONG BUY signal is active (if enabled)
+- Deviation exceeds configured threshold
+- Rate exceeds configured threshold
 
-Payload incluye: par, señal, cotización, desviación, confianza, monto sugerido.
+Payload includes: pair, signal, rate, deviation, confidence, suggested amount.
 
-### Comando CLI
+### CLI command
 
 ```bash
-# Obtener todos los pares activos (90 días por defecto)
+# Fetch all active pairs (90 days by default)
 uv run python manage.py fetch_rates
 
-# Par específico, últimos 3 días, sin alertas
+# Specific pair, last 3 days, no alerts
 uv run python manage.py fetch_rates --pair usd-brl --days 3 --no-alerts
 ```
 
-Imprime indicadores por par y comparador de rutas al final.
+Prints indicators per pair and the route comparator at the end.
 
 ---
 
-## Cómo ejecutar en local
+## Running locally
 
 ```bash
-# Instalar dependencias
+# Install dependencies
 uv sync
 
-# Aplicar migraciones (ya incluye los 3 pares y datos migrados)
+# Apply migrations (includes the 3 pairs and migrated data)
 uv run python manage.py migrate
 
-# Poblar cotizaciones iniciales
+# Seed initial rates
 uv run python manage.py fetch_rates
 
-# Arrancar servidor
+# Start server
 uv run python manage.py runserver
 ```
 
-Abre `http://localhost:8000` — redirige a `/overview/`.
+Open `http://localhost:8000` — redirects to `/overview/`.
 
-Para activar el passcode:
+To enable the passcode:
 ```bash
-export ACCESS_PASSCODE=tu-secreto
+export ACCESS_PASSCODE=your-secret
 ```
 
 ---
 
-### Seguimiento de capital (Purchase)
+### Purchase tracking
 
-Modelo `Purchase` para registrar conversiones reales ejecutadas por el usuario.
+`Purchase` model to record actual conversions executed by the user.
 
-**Campos:** `pair`, `date`, `amount_spent` (moneda base), `amount_received` (moneda cotizada), `note`, `created_at`
-**Propiedad calculada:** `effective_rate = amount_received / amount_spent`
+**Fields:** `pair`, `date`, `amount_spent` (base currency), `amount_received` (quote currency), `note`, `created_at`
+**Computed property:** `effective_rate = amount_received / amount_spent`
 
-Por par se muestran:
-- Total gastado / total recibido / tasa media ponderada / número de operaciones
-- Tabla de compras individuales con botón de eliminar (HTMX)
-- Formulario inline para registrar nuevas compras
+Per pair the dashboard shows:
+- Total spent / total received / weighted average rate / trade count
+- Individual purchases table with delete button (HTMX)
+- Inline form to record new purchases
 
-En `/overview/`: tabla consolidada de capital desplegado por los tres pares.
+On `/overview/`: consolidated table of capital deployed across all three pairs.
 
-Las monedas se derivan automáticamente del código del par (`USD-BRL` → gasta `USD`, recibe `BRL`).
+Currencies are derived automatically from the pair code (`USD-BRL` → spends `USD`, receives `BRL`).
 
 ---
 
-## Pendiente / Próximos pasos
+### Deployment (Docker Compose)
 
-- Automatizar `fetch_rates` vía cron (e.g. `--days 3` cada hora)
-- Migrar base de datos a PostgreSQL en producción
+| Component      | Where it runs          | Role |
+|----------------|------------------------|------|
+| `web` (Docker) | single container       | Django + Gunicorn + django-crontab + system cron |
+| Caddy (host)   | VPS operating system   | Reverse proxy + automatic TLS (Let's Encrypt) |
+
+A single container runs gunicorn and the system `cron` daemon. Scheduled tasks
+are registered via `django-crontab` on container startup.
+Caddy is installed directly on the host and proxies to `localhost:8003`.
+
+**Initial VPS deployment:**
+```bash
+git clone <repo> /opt/rates-monitor
+cd /opt/rates-monitor
+bash deploy/deploy.sh --setup
+```
+
+**Update:**
+```bash
+git pull && bash deploy/deploy.sh
+```
+
+The `cron` service updates rates every hour without manual intervention
+(full 90-day backfill at 02:00 UTC daily).
+
+→ Full guide: [docs/deployment.md](docs/deployment.md)
+
+---
+
+## Pending / Next steps
+
+- Migrate database to PostgreSQL in production (optional; see docs/deployment.md)

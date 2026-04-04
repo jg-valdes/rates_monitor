@@ -2,8 +2,8 @@
 Cross-pair analysis: computes the best route from UYU to BRL.
 
 Two possible routes:
-  - Directa:   UYU → BRL  (use UYU-BRL rate directly)
-  - Indirecta: UYU → USD → BRL  (sell UYU for USD, then sell USD for BRL)
+  - Direct:   UYU → BRL  (use UYU-BRL rate directly)
+  - Indirect: UYU → USD → BRL  (sell UYU for USD, then sell USD for BRL)
 
 Formula:
   direct_rate   = UYU-BRL bid  (BRL per 1 UYU)
@@ -11,7 +11,7 @@ Formula:
                 = (USD per 1 UYU) * (BRL per 1 USD)
                 = BRL per 1 UYU via the intermediate step
 
-A higher value means more BRL per peso uruguayo, i.e., a better deal.
+A higher value means more BRL per Uruguayan peso, i.e., a better deal.
 """
 
 from rates.models import CurrencyPair, ExchangeRate
@@ -44,10 +44,10 @@ def compute_cross_pair() -> dict | None:
     indirect_rate = uyu_usd * usd_brl
 
     if direct_rate >= indirect_rate:
-        best_route = "directa"
+        best_route = "direct"
         advantage_pct = (direct_rate - indirect_rate) / indirect_rate * 100
     else:
-        best_route = "indirecta"
+        best_route = "indirect"
         advantage_pct = (indirect_rate - direct_rate) / direct_rate * 100
 
     return {

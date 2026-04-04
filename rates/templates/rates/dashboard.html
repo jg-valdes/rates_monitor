@@ -5,33 +5,39 @@
 
 {% block content %}
 
-{# ── Stats (auto-refresh via HTMX) ────────────────────────────────────────── #}
-{% include 'rates/partials/stats.html' %}
-
-{% if has_data %}
-
-{# ── Gráfico + Configuración ─────────────────────────────────────────────── #}
+{# ── Layer 1: pair stats | signal + allocation | config form ─────────────── #}
+{# stats.html uses display:contents so its 2 inner cards slot into cols 1-2 #}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
 
-  {# Gráfico #}
-  <div class="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-5">
-    <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">
-      {{ pair.code }} — Historial de Cotización (últimos 90 días)
-    </h2>
-    <div class="relative" style="height: 260px;">
-      <canvas id="rateChart"></canvas>
-    </div>
-  </div>
+  {% include 'rates/partials/stats.html' %}
 
-  {# Panel de Configuración #}
+  {# Card 3: config form #}
+  {% if has_data %}
   <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
     <div id="config-panel">
       {% include 'rates/partials/config_form.html' %}
     </div>
   </div>
+  {% endif %}
+
 </div>
 
-{# ── Tabla de Historial ──────────────────────────────────────────────────── #}
+{% if has_data %}
+
+{# ── Layer 2: capital totals + register form | purchases table ───────────── #}
+{% include 'rates/partials/purchases.html' %}
+
+{# ── Layer 3: chart ──────────────────────────────────────────────────────── #}
+<div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
+  <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">
+    {{ pair.code }} — Historial de Cotización (últimos 90 días)
+  </h2>
+  <div class="relative" style="height: 260px;">
+    <canvas id="rateChart"></canvas>
+  </div>
+</div>
+
+{# ── Layer 4: history table ───────────────────────────────────────────────── #}
 <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
   <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
     <h2 class="text-xs text-gray-500 uppercase tracking-widest">Decisiones Recientes</h2>
@@ -85,12 +91,6 @@
       </tbody>
     </table>
   </div>
-</div>
-
-{# ── Capital Desplegado ──────────────────────────────────────────────────── #}
-<div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 mt-4">
-  <h2 class="text-xs text-gray-500 uppercase tracking-widest mb-5">Capital Desplegado — {{ pair.code }}</h2>
-  {% include 'rates/partials/purchases.html' %}
 </div>
 
 {# ── Chart.js init ───────────────────────────────────────────────────────── #}
@@ -180,19 +180,6 @@
   });
 })();
 </script>
-
-{% else %}
-
-{# Estado vacío #}
-<div class="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
-  <p class="text-gray-300 text-xl font-semibold mb-2">Sin datos para {{ pair.code }}</p>
-  <p class="text-gray-500 mb-6">
-    Ejecuta el comando a continuación para obtener los últimos 90 días de cotizaciones.
-  </p>
-  <code class="bg-gray-800 text-indigo-400 px-4 py-2 rounded-lg text-sm">
-    uv run python manage.py fetch_rates --pair {{ pair.slug }}
-  </code>
-</div>
 
 {% endif %}
 

@@ -7,17 +7,17 @@ register = template.Library()
 
 @register.filter
 def signal_label(value: str) -> str:
-    """Traduce un código de señal interno a su etiqueta en español."""
+    """Translate an internal signal code to its Spanish display label."""
     return SIGNAL_LABELS.get(value, value)
 
 
 @register.filter
 def confidence_label(value: str) -> str:
-    """Traduce un nivel de confianza interno a su etiqueta en español."""
+    """Translate an internal confidence level to its Spanish display label."""
     return CONFIDENCE_LABELS.get(value, value)
 
 
 @register.filter
 def momentum_label(value: str) -> str:
-    """Traduce un valor de tendencia interno a su etiqueta en español."""
+    """Translate an internal momentum value to its Spanish display label."""
     return MOMENTUM_LABELS.get(value, value)

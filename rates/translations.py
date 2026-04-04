@@ -1,7 +1,7 @@
 """
-Mapeos de etiquetas en español para valores internos en inglés.
-Los constantes de dominio (STRONG BUY, HIGH, etc.) se mantienen en inglés
-para no romper comparaciones en Python ni migraciones de base de datos.
+Spanish display labels for internal English domain constants.
+Domain constants (STRONG BUY, HIGH, etc.) are always kept in English to
+avoid breaking Python comparisons or requiring database migrations.
 """
 
 SIGNAL_LABELS: dict[str, str] = {

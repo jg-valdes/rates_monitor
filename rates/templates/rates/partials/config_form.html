@@ -4,7 +4,7 @@
 </div>
 {% endif %}
 
-<h2 class="text-xs text-gray-500 uppercase tracking-widest mb-4">Configuración — {{ pair.code }}</h2>
+<p class="text-xs text-gray-500 uppercase tracking-widest mb-4">Configuración — {{ pair.code }}</p>
 
 <form
   method="post"
@@ -24,7 +24,7 @@
                focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
     </div>
 
-    <p class="text-xs text-gray-600 uppercase tracking-widest pt-2">Umbrales de Decisión (%)</p>
+    <p class="text-xs text-gray-600 uppercase tracking-widest pt-1">Umbrales de Decisión (%)</p>
 
     <div class="grid grid-cols-3 gap-2">
       <div>
@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <p class="text-xs text-gray-600 uppercase tracking-widest pt-2">Alertas</p>
+    <p class="text-xs text-gray-600 uppercase tracking-widest pt-1">Alertas</p>
 
     <div>
       <label class="block text-gray-400 mb-1 text-xs">URL Webhook (Telegram / Discord / n8n)</label>
@@ -90,7 +90,7 @@
 
     <button type="submit"
       class="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white
-             rounded-lg px-4 py-2.5 font-semibold text-sm transition-colors mt-2">
+             rounded-lg px-4 py-2.5 font-semibold text-sm transition-colors mt-1">
       Guardar Configuración
     </button>
   </div>
