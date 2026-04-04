@@ -365,18 +365,20 @@ To test views with queries, use `@pytest.mark.django_db` with pytest-django fixt
 
 ## Environment variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `SECRET_KEY` | *(dev value)* | Django secret key. Change in production. |
-| `DEBUG` | `True` | Set to `False` for production. |
-| `ALLOWED_HOSTS` | `*` | Comma-separated list of allowed hosts. |
-| `ACCESS_PASSCODE` | *(empty)* | Site access passcode. Empty = no protection. |
+| Variable | Default | Description                                                 |
+|---|---|-------------------------------------------------------------|
+| `SECRET_KEY` | *(dev value)* | Django secret key. Change in production.                    |
+| `DEBUG` | `True` | Set to `False` for production.                              |
+| `CORS_ALLOWED_ORIGINS_EXTRA` | `*` | Comma-separated list of allowed hosts.                      |
+| `CSRF_TRUSTED_ORIGINS_EXTRA` | `*` | Comma-separated list of trusted hosts for csrf validations. |
+| `ACCESS_PASSCODE` | *(empty)* | Site access passcode. Empty = no protection.                |
 
 Example `.env` for production:
 
 ```env
 SECRET_KEY=your-long-random-secret-key
 DEBUG=False
-ALLOWED_HOSTS=yourdomain.com
+CORS_ALLOWED_ORIGINS_EXTRA=yourdomain.com
+CSRF_TRUSTED_ORIGINS_EXTRA=yourdomain.com
 ACCESS_PASSCODE=your-secret-code
 ```

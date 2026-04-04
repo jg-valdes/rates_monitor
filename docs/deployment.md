@@ -103,7 +103,8 @@ Minimum required values:
 ```env
 SECRET_KEY=<50-character-random-string>
 DEBUG=False
-ALLOWED_HOSTS=yourdomain.com
+CORS_ALLOWED_ORIGINS_EXTRA=yourdomain.com
+CSRF_TRUSTED_ORIGINS_EXTRA=yourdomain.com
 ACCESS_PASSCODE=<your-access-code>
 ```
 
