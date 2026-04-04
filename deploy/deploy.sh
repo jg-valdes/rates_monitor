@@ -42,6 +42,11 @@ if $SETUP; then
 fi
 
 # ── 2. Create .env if it doesn't exist ───────────────────────────────────────
+
+# first update repo
+git pull
+
+# validate env configs
 ENV_FILE="$APP_DIR/.env"
 if [ ! -f "$ENV_FILE" ]; then
     [ -f "$APP_DIR/.env.example" ] || die ".env.example not found."
@@ -51,6 +56,7 @@ if [ ! -f "$ENV_FILE" ]; then
     warn "Press Enter when ready, or Ctrl-C to abort."
     read -r
 fi
+
 
 # ── 3. Build ──────────────────────────────────────────────────────────────────
 cd "$APP_DIR"
