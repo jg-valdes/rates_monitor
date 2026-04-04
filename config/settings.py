@@ -9,6 +9,8 @@ SECRET_KEY = os.environ.get(
 )
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
+ALLOWED_HOSTS = ["*"]
+
 _cors_extra = [h.strip() for h in os.environ.get("CORS_ALLOWED_ORIGINS_EXTRA", default="").split(",") if h.strip()]
 CORS_ALLOWED_ORIGINS = [*_cors_extra]
 
