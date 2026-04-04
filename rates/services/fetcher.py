@@ -1,54 +1,71 @@
 import logging
 import os
-from datetime import datetime, timezone
-
-import requests
+from datetime import date, timedelta
 
 from rates.models import ExchangeRate
+from rates.services.openexchangeapi import OpenExchangeApi, OpenExchangeApiError
 
 logger = logging.getLogger(__name__)
 
-API_URL = "https://economia.awesomeapi.com.br/json/daily/{pair}/{days}"
-_API_KEY = os.environ.get("AWESOMEAPI_KEY", "")
+# Client is initialized once per process; reads the key from the environment.
+_client = OpenExchangeApi(api_key=os.environ.get("OPEN_EXCHANGE_RATES_APP_ID") or None)
+
+# Per-process cache: avoids redundant API calls when multiple pairs are
+# fetched on the same date within the same management-command run.
+_rate_cache: dict[str, dict[str, float]] = {}
+
+
+def _rates_for_date(date_str: str) -> dict[str, float]:
+    """Return the full USD-based rate dict for a given date, using cache when possible."""
+    if date_str not in _rate_cache:
+        response = _client.get_historical(date_str)
+        _rate_cache[date_str] = response.rates
+    return _rate_cache[date_str]
 
 
 def fetch_and_store(pair, days: int = 90) -> tuple[int, int]:
     """
-    Fetch last `days` days of rates for `pair` from awesomeapi and upsert into DB.
-    `pair` must be a CurrencyPair instance.
+    Fetch the last `days` calendar days of rates for `pair` from Open Exchange Rates
+    and upsert into the DB.  `pair` must be a CurrencyPair instance.
     Returns (created_count, updated_count).
 
-    Set AWESOMEAPI_KEY in the environment to authenticate requests and get a
-    higher rate limit from the AwesomeAPI.
+    All rates are derived from USD-based cross-rates:
+        pair_rate = rates[quote_currency] / rates[base_currency]
+
+    API responses are cached per date within the same process run, so fetching
+    multiple pairs together only makes one HTTP call per unique date.
     """
-    url = API_URL.format(pair=pair.api_code, days=days)
-    headers = {"x-api-key": _API_KEY} if _API_KEY else {}
-    logger.info(f"Fetching {days} days of {pair.code} from {url}")
-
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-    except requests.RequestException as exc:
-        logger.error(f"API request failed for {pair.code}: {exc}")
-        raise
-
+    base_curr = pair.base_currency
+    quote_curr = pair.quote_currency
+    today = date.today()
     created = updated = 0
-    for item in data:
+
+    for i in range(days - 1, -1, -1):
+        rate_date = today - timedelta(days=i)
+        date_str = rate_date.isoformat()
+
         try:
-            ts = int(item["timestamp"])
-            rate_date = datetime.fromtimestamp(ts, tz=timezone.utc).date()
-            rate = float(item["bid"])
-            high = float(item["high"]) if item.get("high") else None
-            low = float(item["low"]) if item.get("low") else None
-        except (KeyError, ValueError) as exc:
-            logger.warning(f"Skipping malformed record for {pair.code}: {exc}")
+            rates = _rates_for_date(date_str)
+        except OpenExchangeApiError as exc:
+            # Future dates or weekends may not have data yet — skip gracefully.
+            logger.warning(f"Skipping {pair.code} on {date_str}: {exc}")
             continue
+        except Exception as exc:
+            logger.error(f"API request failed for {pair.code}: {exc}")
+            raise
+
+        usd_to_base = rates.get(base_curr)
+        usd_to_quote = rates.get(quote_curr)
+        if not usd_to_base or not usd_to_quote:
+            logger.warning(f"Missing rate for {pair.code} on {date_str}, skipping")
+            continue
+
+        rate_value = round(usd_to_quote / usd_to_base, 4)
 
         _, was_created = ExchangeRate.objects.update_or_create(
             pair=pair,
             date=rate_date,
-            defaults={"rate": rate, "high": high, "low": low},
+            defaults={"rate": rate_value, "high": None, "low": None},
         )
         if was_created:
             created += 1

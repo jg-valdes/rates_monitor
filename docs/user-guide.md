@@ -262,10 +262,9 @@ No. The API provides daily rates. The current day's rate may update multiple
 times if you run `fetch_rates` more than once during the day.
 
 **Do I need an API key?**
-No. The system uses [awesomeapi.com.br](https://economia.awesomeapi.com.br), a
-free public API. An API key is optional — set `AWESOMEAPI_KEY` in your `.env`
-to authenticate requests and get a higher rate limit. Without a key the public
-unauthenticated endpoint is used, which is sufficient for personal use.
+Yes. The system uses [Open Exchange Rates](https://openexchangeapi.com), which
+requires an API key. Set `OPEN_EXCHANGE_RATES_APP_ID` in your `.env` file.
+A free plan is available and is sufficient for personal use.
 
 **What happens if the API doesn't respond?**
 The "↻ Actualizar" button shows a spinner while trying to fetch data. If it
