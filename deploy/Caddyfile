@@ -1,0 +1,31 @@
+# deploy/Caddyfile — TEMPLATE for host-level Caddy installation
+#
+# This file is NOT used by docker-compose. Copy it to your Caddy config
+# directory (typically /etc/caddy/Caddyfile or include it from there) and
+# replace YOUR_DOMAIN with your actual domain.
+#
+# Caddy obtains and renews the TLS certificate from Let's Encrypt
+# automatically. HTTP → HTTPS redirect is built in.
+#
+# The app runs in Docker bound to 127.0.0.1:8000, so Caddy proxies to
+# localhost:8000. Both Caddy and the container must be on the same host.
+
+YOUR_DOMAIN {
+
+    reverse_proxy localhost:8003
+
+    # Security headers
+    header {
+        X-Frame-Options           DENY
+        X-Content-Type-Options    nosniff
+        Referrer-Policy           strict-origin-when-cross-origin
+        X-XSS-Protection          "1; mode=block"
+        # Uncomment once you confirm everything loads over HTTPS:
+        # Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}

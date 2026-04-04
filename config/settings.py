@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_crontab",
     "rates",
 ]
 
@@ -55,12 +56,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+_data_dir = os.environ.get("DATA_DIR", "")
+DATA_DIR = Path(_data_dir) if _data_dir else BASE_DIR
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": DATA_DIR / "db.sqlite3",
     }
 }
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -77,6 +83,23 @@ USE_TZ = True
 STATIC_URL = "/static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ── Cron jobs (django-crontab) ────────────────────────────────────────────────
+# django-crontab resolves the Python executable and manage.py path at install
+# time. Pointing to sys.executable ensures the venv Python is used, which is
+# correct both in Docker (/app/.venv/bin/python) and in local dev.
+import sys as _sys
+
+CRONTAB_PYTHON_EXECUTABLE = _sys.executable
+CRONTAB_DJANGO_MANAGE_PATH = str(BASE_DIR / "manage.py")
+CRONTAB_LOCK_JOBS = True   # prevents concurrent runs of the same job
+
+CRONJOBS = [
+    # Every hour — fetch last 3 days for all pairs, evaluate alerts
+    ("0 * * * *", "rates.cron.fetch_rates_hourly"),
+    # Every day at 02:00 UTC — 90-day backfill, no alerts (safety net)
+    ("0 2 * * *", "rates.cron.fetch_rates_daily_backfill"),
+]
 
 LOGGING = {
     "version": 1,

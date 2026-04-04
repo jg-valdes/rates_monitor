@@ -1,123 +1,146 @@
-<div id="purchases-panel">
+<div id="purchases-panel" class="grid grid-cols-12 gap-4 mb-6">
 
-  {# ── Totales ── #}
-  {% if totals %}
-  <div class="grid grid-cols-3 gap-3 mb-5">
-    <div class="bg-gray-800/60 rounded-xl p-3 text-center">
-      <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">
-        Total {{ pair.base_currency }}
-      </p>
-      <p class="text-lg font-black text-white tabular-nums">
-        {{ totals.total_spent|floatformat:2 }}
-      </p>
+  {# ── col-4: totals + register form ── #}
+  <div class="col-span-12 lg:col-span-4 bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col">
+
+    <p class="text-xs text-gray-500 uppercase tracking-widest mb-4">Capital Desplegado — {{ pair.code }}</p>
+
+    {# Totals #}
+    {% if totals %}
+    <div class="grid grid-cols-3 gap-2 mb-5">
+      <div class="bg-gray-800/60 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">
+          {{ pair.base_currency }}
+        </p>
+        <p class="text-base font-black text-white tabular-nums">
+          {{ totals.total_spent|floatformat:2 }}
+        </p>
+      </div>
+      <div class="bg-gray-800/60 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">
+          {{ pair.quote_currency }}
+        </p>
+        <p class="text-base font-black text-white tabular-nums">
+          {{ totals.total_received|floatformat:2 }}
+        </p>
+      </div>
+      <div class="bg-gray-800/60 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">Tasa</p>
+        <p class="text-base font-black text-indigo-300 tabular-nums">
+          {{ totals.avg_rate|floatformat:4 }}
+        </p>
+      </div>
     </div>
-    <div class="bg-gray-800/60 rounded-xl p-3 text-center">
-      <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">
-        Total {{ pair.quote_currency }}
-      </p>
-      <p class="text-lg font-black text-white tabular-nums">
-        {{ totals.total_received|floatformat:2 }}
-      </p>
+    {% else %}
+    <p class="text-gray-600 text-sm mb-5">Sin compras registradas aún.</p>
+    {% endif %}
+
+    {# Divider #}
+    <div class="border-t border-gray-800 mt-auto pt-5">
+      {# Register form #}
+      <form
+        hx-post="{% url 'add_purchase' pair.slug %}"
+        hx-target="#purchases-panel"
+        hx-swap="outerHTML"
+        class="space-y-3"
+      >
+        {% csrf_token %}
+        <p class="text-xs text-gray-600 uppercase tracking-widest mb-3">Registrar Compra</p>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-gray-500 mb-1 text-xs">Fecha</label>
+            <input type="date" name="date" required
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                     focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-gray-500 mb-1 text-xs">Nota (opcional)</label>
+            <input type="text" name="note" maxlength="200" placeholder="ej. compra mensual"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                     focus:outline-none focus:border-indigo-500 placeholder-gray-600">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-gray-500 mb-1 text-xs">{{ pair.base_currency }} gastado</label>
+            <input type="number" name="amount_spent" step="0.01" min="0.01" required
+              placeholder="0.00"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                     focus:outline-none focus:border-indigo-500 placeholder-gray-600">
+          </div>
+          <div>
+            <label class="block text-gray-500 mb-1 text-xs">{{ pair.quote_currency }} recibido</label>
+            <input type="number" name="amount_received" step="0.01" min="0.01" required
+              placeholder="0.00"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                     focus:outline-none focus:border-indigo-500 placeholder-gray-600">
+          </div>
+        </div>
+        <button type="submit"
+          class="w-full bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-white
+                 rounded-lg px-4 py-2 font-semibold text-sm transition-colors">
+          + Registrar
+        </button>
+      </form>
     </div>
-    <div class="bg-gray-800/60 rounded-xl p-3 text-center">
-      <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">Tasa Media</p>
-      <p class="text-lg font-black text-indigo-300 tabular-nums">
-        {{ totals.avg_rate|floatformat:4 }}
-      </p>
-    </div>
+
   </div>
-  {% endif %}
 
-  {# ── Tabla de compras ── #}
-  {% if purchases %}
-  <div class="overflow-x-auto mb-5">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-xs text-gray-600 uppercase border-b border-gray-800">
-          <th class="py-2 pr-3 text-left font-medium">Fecha</th>
-          <th class="py-2 pr-3 text-right font-medium">{{ pair.base_currency }}</th>
-          <th class="py-2 pr-3 text-right font-medium">{{ pair.quote_currency }}</th>
-          <th class="py-2 pr-3 text-right font-medium">Tasa</th>
-          <th class="py-2 text-left font-medium text-gray-700">Nota</th>
-          <th class="py-2"></th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-800/40">
-        {% for p in purchases %}
-        <tr class="hover:bg-gray-800/20 transition-colors">
-          <td class="py-2 pr-3 text-gray-400 tabular-nums">{{ p.date }}</td>
-          <td class="py-2 pr-3 text-right font-mono text-gray-200 tabular-nums">
-            {{ p.amount_spent|floatformat:2 }}
-          </td>
-          <td class="py-2 pr-3 text-right font-mono text-gray-200 tabular-nums">
-            {{ p.amount_received|floatformat:2 }}
-          </td>
-          <td class="py-2 pr-3 text-right font-mono text-indigo-300 tabular-nums">
-            {{ p.effective_rate|floatformat:4 }}
-          </td>
-          <td class="py-2 text-gray-600 text-xs">{{ p.note }}</td>
-          <td class="py-2 text-right">
-            <button
-              hx-post="{% url 'delete_purchase' pair.slug p.pk %}"
-              hx-target="#purchases-panel"
-              hx-swap="outerHTML"
-              hx-confirm="¿Eliminar esta compra?"
-              class="text-gray-700 hover:text-red-400 transition-colors text-xs px-1"
-              title="Eliminar">✕</button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  {# ── col-8: purchases table ── #}
+  <div class="col-span-12 lg:col-span-8 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+      <p class="text-xs text-gray-500 uppercase tracking-widest">Compras Registradas</p>
+      {% if totals %}
+      <span class="text-xs text-gray-600">{{ totals.count }} operación{% if totals.count != 1 %}es{% endif %}</span>
+      {% endif %}
+    </div>
+
+    {% if purchases %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-gray-600 uppercase border-b border-gray-800">
+            <th class="px-5 py-3 text-left font-medium">Fecha</th>
+            <th class="px-5 py-3 text-right font-medium">{{ pair.base_currency }}</th>
+            <th class="px-5 py-3 text-right font-medium">{{ pair.quote_currency }}</th>
+            <th class="px-5 py-3 text-right font-medium">Tasa</th>
+            <th class="px-5 py-3 text-left font-medium text-gray-700">Nota</th>
+            <th class="px-5 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800/40">
+          {% for p in purchases %}
+          <tr class="hover:bg-gray-800/20 transition-colors">
+            <td class="px-5 py-3 text-gray-400 tabular-nums">{{ p.date }}</td>
+            <td class="px-5 py-3 text-right font-mono text-gray-200 tabular-nums">
+              {{ p.amount_spent|floatformat:2 }}
+            </td>
+            <td class="px-5 py-3 text-right font-mono text-gray-200 tabular-nums">
+              {{ p.amount_received|floatformat:2 }}
+            </td>
+            <td class="px-5 py-3 text-right font-mono text-indigo-300 tabular-nums">
+              {{ p.effective_rate|floatformat:4 }}
+            </td>
+            <td class="px-5 py-3 text-gray-600 text-xs">{{ p.note }}</td>
+            <td class="px-5 py-3 text-right">
+              <button
+                hx-post="{% url 'delete_purchase' pair.slug p.pk %}"
+                hx-target="#purchases-panel"
+                hx-swap="outerHTML"
+                hx-confirm="¿Eliminar esta compra?"
+                class="text-gray-700 hover:text-red-400 transition-colors text-xs px-1"
+                title="Eliminar">✕</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="px-5 py-10 text-center text-gray-600 text-sm">
+      Sin compras registradas. Usa el formulario de la izquierda para añadir la primera.
+    </div>
+    {% endif %}
   </div>
-  {% else %}
-  <p class="text-gray-600 text-sm mb-5">Sin compras registradas aún.</p>
-  {% endif %}
-
-  {# ── Formulario de nueva compra ── #}
-  <form
-    hx-post="{% url 'add_purchase' pair.slug %}"
-    hx-target="#purchases-panel"
-    hx-swap="outerHTML"
-    class="space-y-3"
-  >
-    {% csrf_token %}
-    <p class="text-xs text-gray-600 uppercase tracking-widest">Registrar Compra</p>
-    <div class="grid grid-cols-2 gap-2">
-      <div>
-        <label class="block text-gray-500 mb-1 text-xs">Fecha</label>
-        <input type="date" name="date" required
-          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
-                 focus:outline-none focus:border-indigo-500">
-      </div>
-      <div>
-        <label class="block text-gray-500 mb-1 text-xs">Nota (opcional)</label>
-        <input type="text" name="note" maxlength="200" placeholder="ej. compra mensual"
-          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
-                 focus:outline-none focus:border-indigo-500 placeholder-gray-600">
-      </div>
-    </div>
-    <div class="grid grid-cols-2 gap-2">
-      <div>
-        <label class="block text-gray-500 mb-1 text-xs">{{ pair.base_currency }} gastado</label>
-        <input type="number" name="amount_spent" step="0.01" min="0.01" required
-          placeholder="0.00"
-          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
-                 focus:outline-none focus:border-indigo-500 placeholder-gray-600">
-      </div>
-      <div>
-        <label class="block text-gray-500 mb-1 text-xs">{{ pair.quote_currency }} recibido</label>
-        <input type="number" name="amount_received" step="0.01" min="0.01" required
-          placeholder="0.00"
-          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
-                 focus:outline-none focus:border-indigo-500 placeholder-gray-600">
-      </div>
-    </div>
-    <button type="submit"
-      class="w-full bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-white
-             rounded-lg px-4 py-2 font-semibold text-sm transition-colors">
-      + Registrar
-    </button>
-  </form>
 
 </div>

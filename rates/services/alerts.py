@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 def check_and_send(indicators: dict, decision: dict, config, pair_name: str = "") -> list[str]:
     """
-    Evalúa condiciones de alerta y envía notificaciones vía webhook.
-    Retorna la lista de mensajes de alerta disparados.
+    Evaluate alert conditions and send notifications via webhook.
+    Returns the list of triggered alert messages.
     """
     triggered = []
     signal_es = SIGNAL_LABELS.get(decision["signal"], decision["signal"])
@@ -18,8 +18,8 @@ def check_and_send(indicators: dict, decision: dict, config, pair_name: str = ""
 
     if config.alert_on_strong_buy and decision["signal"] == "STRONG BUY":
         triggered.append(
-            f"{prefix}Señal {signal_es}: cotización {indicators['current_rate']:.4f}, "
-            f"desviación {indicators['deviation']:+.2f}%"
+            f"{prefix}Signal {signal_es}: rate {indicators['current_rate']:.4f}, "
+            f"deviation {indicators['deviation']:+.2f}%"
         )
 
     if (
@@ -27,8 +27,8 @@ def check_and_send(indicators: dict, decision: dict, config, pair_name: str = ""
         and indicators["deviation"] > config.alert_on_deviation_above
     ):
         triggered.append(
-            f"{prefix}Desviación {indicators['deviation']:+.2f}% superó el umbral "
-            f"configurado de {config.alert_on_deviation_above:+.2f}%"
+            f"{prefix}Deviation {indicators['deviation']:+.2f}% exceeded configured "
+            f"threshold of {config.alert_on_deviation_above:+.2f}%"
         )
 
     if (
@@ -36,12 +36,12 @@ def check_and_send(indicators: dict, decision: dict, config, pair_name: str = ""
         and indicators["current_rate"] > config.alert_on_rate_above
     ):
         triggered.append(
-            f"{prefix}Cotización {indicators['current_rate']:.4f} superó el umbral "
-            f"configurado de {config.alert_on_rate_above:.4f}"
+            f"{prefix}Rate {indicators['current_rate']:.4f} exceeded configured "
+            f"threshold of {config.alert_on_rate_above:.4f}"
         )
 
     for message in triggered:
-        logger.warning(f"ALERTA: {message}")
+        logger.warning(f"ALERT: {message}")
         if config.alert_webhook_url:
             _send_webhook(config.alert_webhook_url, message, indicators, decision, pair_name)
 
@@ -62,6 +62,6 @@ def _send_webhook(url: str, message: str, indicators: dict, decision: dict, pair
     try:
         response = requests.post(url, json=payload, timeout=5)
         response.raise_for_status()
-        logger.info(f"Alerta enviada al webhook: {url}")
+        logger.info(f"Alert sent to webhook: {url}")
     except requests.RequestException as exc:
-        logger.error(f"Error al enviar webhook ({url}): {exc}")
+        logger.error(f"Error sending webhook ({url}): {exc}")

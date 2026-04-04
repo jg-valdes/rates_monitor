@@ -5,5 +5,7 @@ description = "Monitor currency exchange rates and send notifications when they 
 requires-python = ">=3.14"
 dependencies = [
     "django>=6.0.3",
+    "django-crontab>=0.7.1",
+    "gunicorn>=25.3.0",
     "requests>=2.33.1",
 ]
