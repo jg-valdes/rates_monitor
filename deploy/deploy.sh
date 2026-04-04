@@ -52,7 +52,7 @@ if [ ! -f "$ENV_FILE" ]; then
     [ -f "$APP_DIR/.env.example" ] || die ".env.example not found."
     log "Creating .env from .env.example..."
     cp "$APP_DIR/.env.example" "$ENV_FILE"
-    warn "Edit $ENV_FILE — set SECRET_KEY, ACCESS_PASSCODE, and ALLOWED_HOSTS."
+    warn "Edit $ENV_FILE — set SECRET_KEY, ACCESS_PASSCODE, CSRF_TRUSTED_ORIGINS_EXTRA and OPEN_EXCHANGE_RATES_APP_ID."
     warn "Press Enter when ready, or Ctrl-C to abort."
     read -r
 fi

@@ -136,9 +136,15 @@ The effective rate (`effective_rate`) is a computed property:
 def fetch_and_store(pair: CurrencyPair, days: int = 90) -> tuple[int, int]:
 ```
 
-- Uses `pair.api_code` to build the AwesomeAPI URL.
-- If `AWESOMEAPI_KEY` is set in the environment, it is passed as `?token=` for
-  higher rate limits; otherwise the public unauthenticated endpoint is used.
+- Uses the [Open Exchange Rates](https://openexchangeapi.com) API via the
+  vendored `rates/services/openexchangeapi.py` SDK.
+- Authenticates with `OPEN_EXCHANGE_RATES_APP_ID` from the environment.
+- Calls `GET /v1/historical/{date}` once per calendar day in the requested
+  range. All currency rates are USD-based, so the pair rate is computed as:
+  `rates[quote_currency] / rates[base_currency]`.
+- API responses are cached per date within the same process run — fetching
+  multiple pairs together only makes one HTTP call per unique date.
+- `high` and `low` are stored as `None` (the API does not provide intraday data).
 - Uses `update_or_create(pair=pair, date=rate_date, ...)` to be idempotent.
 - Raises exceptions — the caller decides what to do.
 
@@ -389,10 +395,9 @@ To test views with queries, use `@pytest.mark.django_db` with pytest-django fixt
 |---|---|---|
 | `SECRET_KEY` | *(dev value)* | Django secret key. Change in production. |
 | `DEBUG` | `True` | Set to `False` for production. |
-| `CORS_ALLOWED_ORIGINS_EXTRA` | `*` | Comma-separated list of allowed hosts. |
 | `CSRF_TRUSTED_ORIGINS_EXTRA` | `*` | Comma-separated list of trusted hosts for CSRF validation. |
 | `ACCESS_PASSCODE` | *(empty)* | Site access passcode. Empty = no protection. |
-| `AWESOMEAPI_KEY` | *(empty)* | Optional API key for AwesomeAPI — unlocks higher rate limits. |
+| `OPEN_EXCHANGE_RATES_APP_ID` | *(required)* | API key from [openexchangeapi.com](https://openexchangeapi.com). |
 
 Example `.env` for production:
 
@@ -402,5 +407,5 @@ DEBUG=False
 CORS_ALLOWED_ORIGINS_EXTRA=yourdomain.com
 CSRF_TRUSTED_ORIGINS_EXTRA=yourdomain.com
 ACCESS_PASSCODE=your-secret-code
-AWESOMEAPI_KEY=your-awesomeapi-token
+OPEN_EXCHANGE_RATES_APP_ID=your-api-key
 ```
