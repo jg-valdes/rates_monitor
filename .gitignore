@@ -11,3 +11,4 @@ dist/
 .claude
 staticfiles/
 data
+deploy/deploy.sh
