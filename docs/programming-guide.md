@@ -194,15 +194,25 @@ def send_test_alert(indicators, decision, config, pair_name: str) -> bool:
 
 - Sends via the Telegram Bot API (`sendMessage`) using `TELEGRAM_BOT_TOKEN` and
   `TELEGRAM_CHAT_ID` from settings. Both must be set; if either is empty, sending
-  is skipped silently.
+  is skipped silently (returns `False`).
 - `check_and_send` — evaluates three conditions (strong-buy signal, deviation
   threshold, rate threshold) and calls `_send_telegram` for each triggered one.
   Network errors are logged but never re-raised, so they cannot interrupt the
   cron flow.
 - `send_test_alert` — sends the same message format as production alerts using
-  real current-data indicators. Used by the UI test button.
-- `_build_message` — shared helper that formats the Telegram Markdown message so
-  both production alerts and test alerts look identical.
+  live indicator data. Called by the per-pair **Enviar Alerta** button and the
+  global **📤 Enviar** nav button (`send_all_alerts` view).
+- `_build_message` — shared helper that formats the Telegram Markdown message.
+  Includes: signal emoji, pair name, Spanish signal label, current rate, deviation
+  vs MA90, MA30, MA90, momentum emoji + label, confidence, and suggested allocation.
+
+**Emoji maps** (internal constant → display character):
+
+| Dict | Keys | Values |
+|---|---|---|
+| `_SIGNAL_EMOJI` | `STRONG BUY`, `MODERATE BUY`, `NEUTRAL`, `DO NOT BUY` | 🚀 📈 📊 🛑 |
+| `_CONFIDENCE_EMOJI` | `HIGH`, `MEDIUM`, `LOW` | 🟢 🟡 🔴 |
+| `_MOMENTUM_EMOJI` | `up`, `down`, `neutral` | ↗️ ↘️ ➡️ |
 
 ---
 

@@ -50,6 +50,27 @@ A ready-to-use Caddyfile template is provided at `deploy/Caddyfile`.
 
 ---
 
+## Telegram alerts
+
+The app can send signal alerts to a Telegram chat. Set two env vars to enable:
+
+```env
+TELEGRAM_BOT_TOKEN=123456:ABC-DEF…   # from @BotFather
+TELEGRAM_CHAT_ID=987654321            # your chat or group ID
+```
+
+Once configured, alerts fire automatically when a monitored condition is met
+(STRONG BUY signal, deviation threshold, rate threshold). You can also send
+a manual snapshot for all pairs at once using the **📤 Enviar** button in the
+nav bar, or test a single pair from its configuration panel.
+
+Each message includes rate, MA30/MA90, deviation vs MA90, momentum, confidence,
+and suggested allocation — all formatted with emoji in Telegram Markdown.
+
+→ Setup instructions: [docs/user-guide.md#alerts](docs/user-guide.md)
+
+---
+
 ## Environment variables
 
 Copy `.env.example` to `.env` and adjust the values:
@@ -64,6 +85,7 @@ TELEGRAM_BOT_TOKEN=…           # from @BotFather (optional)
 TELEGRAM_CHAT_ID=…             # target chat/group ID (optional)
 DATA_DIR=                      # database directory (Docker sets this automatically)
 ```
+
 ---
 
 ## Stack
@@ -82,4 +104,4 @@ Python 3.14 · Django 6 · Gunicorn · django-crontab · Caddy · HTMX · Tailwi
 
 ### Pair details
 
-![Pair panel with details](docs/screenshots/uyu_brl_details.png)
+![Pair panel with details](docs/screenshots/uyu_usd_details.png)

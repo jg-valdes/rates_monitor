@@ -60,8 +60,13 @@ The top bar shows four sections:
 | **UYU-USD** | Uruguayan Peso / Dollar pair dashboard |
 | **UYU-BRL** | Uruguayan Peso / Real pair dashboard |
 
-The **↻ Actualizar** button (visible on each dashboard) fetches the latest rate
-from the API and refreshes the cards.
+The right side of the nav bar has three controls:
+
+- **↻ Actualizar** (dashboard pages only) — fetches the latest rate from the API
+  and refreshes the indicator cards.
+- **📤 Enviar** (all pages) — sends a Telegram message with the current status
+  for every active pair. Shows ✓ / ⚠ / ✕ feedback inline.
+- **Salir** — ends the session (only shown when `ACCESS_PASSCODE` is set).
 
 ---
 
@@ -196,22 +201,44 @@ The range between "No Comp." and "C. Mod." is the NEUTRAL zone.
 
 ### Alerts
 
-Alerts are sent via Telegram. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
-in your `.env` file to enable them (see the FAQ for setup instructions).
+Alerts are sent via Telegram using a single project-wide bot. Set
+`TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in your `.env` file to enable them
+(see the FAQ for setup instructions).
 
-Configure the conditions per pair:
+#### Automatic alerts (per pair)
 
+Configure the conditions in each pair's configuration panel:
+
+- **Alert on COMPRA FUERTE:** checkbox — fires whenever the strong-buy signal is active
 - **Alert if deviation >:** fires when deviation vs MA90 exceeds that percentage
 - **Alert if rate >:** fires when the current rate exceeds that value
-- **Alert on COMPRA FUERTE:** checkbox — fires whenever the strong-buy signal is active
 
-Each alert message includes pair name, signal, current rate, deviation,
-confidence level, and suggested amount — identical to what **Enviar Alerta**
-sends.
+These fire automatically every hour when `fetch_rates` runs (unless `--no-alerts`
+is passed).
 
-The **Enviar Alerta** button sends a real message using current data
-so you can verify delivery and see the exact message format without waiting for
-a signal condition to trigger.
+#### Manual send
+
+Two buttons let you send messages on demand without waiting for a trigger:
+
+- **📤 Enviar** (nav bar, always visible) — sends one message per active pair in
+  a single click, from any page. Inline feedback shows how many were sent.
+- **Enviar Alerta** (per-pair config panel) — sends a message for that pair only.
+
+#### Message format
+
+Each Telegram message contains:
+
+```
+🚀 Dólar / Real — COMPRA FUERTE
+━━━━━━━━━━━━━━━
+💰 Cotización: 5.8900
+📉 Desviación vs MA90: +3.50%
+📊 MA30: 5.7200 · MA90: 5.6900
+↗️ Tendencia: al alza ↑
+🎯 Confianza: 🟢 ALTA
+━━━━━━━━━━━━━━━
+💵 Sugerido: $1500 (150% del presupuesto)
+```
 
 ---
 

@@ -156,13 +156,22 @@ Shown on `/overview/` with percentage advantage.
 
 Telegram notifications via a single project-wide bot (`TELEGRAM_BOT_TOKEN` +
 `TELEGRAM_CHAT_ID` env vars). Fires per pair when:
-- STRONG BUY signal is active (if enabled)
-- Deviation exceeds configured threshold
-- Rate exceeds configured threshold
+- STRONG BUY signal is active (if enabled per pair)
+- Deviation vs MA90 exceeds a configured threshold
+- Current rate exceeds a configured threshold
 
-Message includes: pair name, signal (Spanish), rate, deviation, confidence, and
-suggested amount in Markdown format. A **Test Alert** button in the config panel
-sends a real-data message on demand.
+Message format (Telegram Markdown with emoji):
+- Signal emoji + pair name + Spanish signal label
+- Current rate, deviation vs MA90, MA30, MA90
+- Momentum direction, confidence level
+- Suggested allocation amount and percentage
+
+**Manual send options:**
+- **📤 Enviar** button in the nav bar — sends one message per active pair from
+  any page without navigating to each pair individually.
+- **Enviar Alerta** button in each pair's config panel — sends for that pair only.
+
+Both buttons show inline feedback (✓ / ✕) via HTMX without a page reload.
 
 ### CLI command
 
