@@ -51,7 +51,7 @@
         {% endfor %}
       </div>
 
-      {# Right side: refresh spinner + button (only on pair dashboards) + logout #}
+      {# Right side: refresh spinner + button (only on pair dashboards) + send alerts + logout #}
       <div class="flex items-center gap-3 shrink-0">
         {% if pair %}
         <span id="refresh-spinner" class="htmx-indicator text-indigo-400 text-sm animate-spin">↻</span>
@@ -66,6 +66,16 @@
           ↻ Actualizar
         </button>
         {% endif %}
+        <button
+          class="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1.5
+                 bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg"
+          hx-post="{% url 'rates:send_all_alerts' %}"
+          hx-target="#nav-alert-feedback"
+          hx-swap="innerHTML"
+        >
+          📤 Enviar
+        </button>
+        <span id="nav-alert-feedback" class="text-xs"></span>
         <a href="{% url 'rates:logout' %}"
            class="text-sm text-gray-600 hover:text-gray-300 transition-colors">
           Salir
