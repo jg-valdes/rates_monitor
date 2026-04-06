@@ -21,4 +21,5 @@ urlpatterns = [
     path(
         "<str:pair_code>/purchases/<int:pk>/delete/", views.delete_purchase, name="delete_purchase"
     ),
+    path("<str:pair_code>/test-alert/", views.test_alert, name="test_alert"),
 ]

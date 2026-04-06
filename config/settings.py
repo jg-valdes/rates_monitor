@@ -33,6 +33,11 @@ if not DEBUG:
 # Set this in .env to enable the passcode gate. Leave empty to disable in dev.
 ACCESS_PASSCODE = os.environ.get("ACCESS_PASSCODE", "")
 
+# ── Telegram alerts ───────────────────────────────────────────────────────────
+# Both must be set for alerts to be sent. Leave empty to disable.
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

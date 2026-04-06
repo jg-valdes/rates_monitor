@@ -79,7 +79,6 @@ class PairConfig(models.Model):
     threshold_strong_buy = models.FloatField(default=3.0)
     threshold_moderate_buy = models.FloatField(default=1.5)
     threshold_do_not_buy = models.FloatField(default=-1.0)
-    alert_webhook_url = models.URLField(blank=True, default="")
     alert_on_strong_buy = models.BooleanField(default=True)
     alert_on_deviation_above = models.FloatField(null=True, blank=True)
     alert_on_rate_above = models.FloatField(null=True, blank=True)

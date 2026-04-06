@@ -60,6 +60,8 @@ DEBUG=False
 ALLOWED_HOSTS=yourdomain.com   # comma-separated; required when DEBUG=False
 CSRF_TRUSTED_ORIGINS_EXTRA=…   # server domain or IP (for CSRF validation)
 ACCESS_PASSCODE=…              # access passcode (empty = no protection)
+TELEGRAM_BOT_TOKEN=…           # from @BotFather (optional)
+TELEGRAM_CHAT_ID=…             # target chat/group ID (optional)
 DATA_DIR=                      # database directory (Docker sets this automatically)
 ```
 ---

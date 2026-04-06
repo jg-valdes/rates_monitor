@@ -196,16 +196,22 @@ The range between "No Comp." and "C. Mod." is the NEUTRAL zone.
 
 ### Alerts
 
-Configure automatic webhook notifications when conditions are met:
+Alerts are sent via Telegram. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
+in your `.env` file to enable them (see the FAQ for setup instructions).
 
-- **URL Webhook:** any endpoint that accepts a POST with JSON (Telegram via n8n,
-  Discord, Slack, etc.)
-- **Alert if deviation >:** fires when deviation exceeds that percentage
-- **Alert if rate >:** fires when the rate exceeds that value
-- **Alert on COMPRA FUERTE:** checkbox
+Configure the conditions per pair:
 
-The payload includes pair name, signal, rate, deviation, confidence, and
-suggested amount.
+- **Alert if deviation >:** fires when deviation vs MA90 exceeds that percentage
+- **Alert if rate >:** fires when the current rate exceeds that value
+- **Alert on COMPRA FUERTE:** checkbox — fires whenever the strong-buy signal is active
+
+Each alert message includes pair name, signal, current rate, deviation,
+confidence level, and suggested amount — identical to what **Enviar Alerta**
+sends.
+
+The **Enviar Alerta** button sends a real message using current data
+so you can verify delivery and see the exact message format without waiting for
+a signal condition to trigger.
 
 ---
 
@@ -262,8 +268,22 @@ No. The API provides daily rates. The current day's rate may update multiple
 times if you run `fetch_rates` more than once during the day.
 
 **Do I need an API key?**
-No. The system uses [AwesomeAPI](https://economia.awesomeapi.com.br), which is
-free and requires no registration or API key.
+No. Rate data comes from [AwesomeAPI](https://economia.awesomeapi.com.br), which is
+free and requires no registration or API key. Telegram alerts are optional; they
+require a bot token from @BotFather and a chat ID.
+
+**How do I set up Telegram alerts?**
+1. Open Telegram and start a chat with [@BotFather](https://t.me/BotFather).
+2. Send `/newbot` and follow the prompts — copy the token it gives you.
+3. Send any message to your new bot, then open:
+   `https://api.telegram.org/bot<TOKEN>/getUpdates`
+   Find `"chat":{"id":...}` — that number is your `TELEGRAM_CHAT_ID`.
+4. Set both values in your `.env`:
+   ```
+   TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
+   TELEGRAM_CHAT_ID=987654321
+   ```
+5. Click **Enviar Alerta** on any pair to confirm delivery.
 
 **What happens if the API doesn't respond?**
 The "↻ Actualizar" button shows a spinner while trying to fetch data. If it
