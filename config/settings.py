@@ -9,7 +9,10 @@ SECRET_KEY = os.environ.get(
 )
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = ["*"]
+if DEBUG:
+    ALLOWED_HOSTS = ["*"]
+else:
+    ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 if not DEBUG:
 
@@ -26,6 +29,14 @@ if not DEBUG:
         return result
 
     CSRF_TRUSTED_ORIGINS = _origins("CSRF_TRUSTED_ORIGINS_EXTRA")
+
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # Set this in .env to enable the passcode gate. Leave empty to disable in dev.
 ACCESS_PASSCODE = os.environ.get("ACCESS_PASSCODE", "")

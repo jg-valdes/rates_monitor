@@ -136,17 +136,14 @@ The effective rate (`effective_rate`) is a computed property:
 def fetch_and_store(pair: CurrencyPair, days: int = 90) -> tuple[int, int]:
 ```
 
-- Uses the [Open Exchange Rates](https://openexchangeapi.com) API via the
-  vendored `rates/services/openexchangeapi.py` SDK.
-- Authenticates with `OPEN_EXCHANGE_RATES_APP_ID` from the environment.
-- Calls `GET /v1/historical/{date}` once per calendar day in the requested
-  range. All currency rates are USD-based, so the pair rate is computed as:
-  `rates[quote_currency] / rates[base_currency]`.
-- API responses are cached per date within the same process run — fetching
-  multiple pairs together only makes one HTTP call per unique date.
-- `high` and `low` are stored as `None` (the API does not provide intraday data).
-- Uses `update_or_create(pair=pair, date=rate_date, ...)` to be idempotent.
-- Raises exceptions — the caller decides what to do.
+- Uses [AwesomeAPI](https://economia.awesomeapi.com.br) — free, no API key required.
+- Calls `GET /json/daily/{pair.api_code}/{days}` once per pair, returning up to
+  `days` records newest-first. One HTTP request covers the whole date range.
+- `bid`, `high`, and `low` are stored directly from the response (no cross-rate math).
+- Uses `update_or_create(pair=pair, date=rate_date, ...)` so re-runs are idempotent.
+- Retries up to 3 times with exponential backoff (2 s → 4 s) on HTTP 429.
+- Callers should add a delay between pairs to avoid rate limiting (the management
+  command waits 1 s between pairs; single-pair view refreshes are safe as-is).
 
 ### `services/indicators.py`
 
@@ -248,9 +245,25 @@ pair URL:
 
 ```html
 <div id="stats-section"
-     hx-get="{% url 'stats_partial' pair.slug %}"
+     hx-get="{% url 'rates:stats_partial' pair.slug %}"
      hx-trigger="every 300s"
      hx-swap="outerHTML">
+```
+
+### URL namespacing
+
+All URL names are scoped under the `rates` namespace (`app_name = "rates"` in
+`rates/urls.py`). Always use the namespaced form in templates and `reverse()` calls:
+
+```html
+{% url 'rates:dashboard' pair.slug %}
+{% url 'rates:overview' %}
+{% url 'rates:update_config' pair.slug %}
+```
+
+```python
+from django.urls import reverse
+reverse("rates:dashboard", kwargs={"pair_code": "usd-brl"})
 ```
 
 ### Pair-scoped parameterised URLs
@@ -395,17 +408,21 @@ To test views with queries, use `@pytest.mark.django_db` with pytest-django fixt
 |---|---|---|
 | `SECRET_KEY` | *(dev value)* | Django secret key. Change in production. |
 | `DEBUG` | `True` | Set to `False` for production. |
-| `CSRF_TRUSTED_ORIGINS_EXTRA` | `*` | Comma-separated list of trusted hosts for CSRF validation. |
+| `ALLOWED_HOSTS` | *(empty)* | Comma-separated domains/IPs. Required when `DEBUG=False`. In dev (`DEBUG=True`) all hosts are allowed automatically. |
+| `CSRF_TRUSTED_ORIGINS_EXTRA` | *(empty)* | Comma-separated origins for CSRF validation in production (e.g. `https://yourdomain.com`). |
 | `ACCESS_PASSCODE` | *(empty)* | Site access passcode. Empty = no protection. |
-| `OPEN_EXCHANGE_RATES_APP_ID` | *(required)* | API key from [openexchangeapi.com](https://openexchangeapi.com). |
+| *(none)* | — | Data source is [AwesomeAPI](https://economia.awesomeapi.com.br) — free, no API key required. |
+
+When `DEBUG=False`, Django automatically sets `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`
+(1 year), `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, and `SECURE_CONTENT_TYPE_NOSNIFF`.
+These do not need env vars.
 
 Example `.env` for production:
 
 ```env
 SECRET_KEY=your-long-random-secret-key
 DEBUG=False
-CORS_ALLOWED_ORIGINS_EXTRA=yourdomain.com
+ALLOWED_HOSTS=yourdomain.com
 CSRF_TRUSTED_ORIGINS_EXTRA=yourdomain.com
 ACCESS_PASSCODE=your-secret-code
-OPEN_EXCHANGE_RATES_APP_ID=your-api-key
 ```

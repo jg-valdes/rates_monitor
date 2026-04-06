@@ -10,7 +10,7 @@ technical indicators.
 
 ### Requirements
 
-- Python 3.12+
+- Python 3.14+
 - [uv](https://docs.astral.sh/uv/) installed
 
 ### Steps
@@ -262,9 +262,8 @@ No. The API provides daily rates. The current day's rate may update multiple
 times if you run `fetch_rates` more than once during the day.
 
 **Do I need an API key?**
-Yes. The system uses [Open Exchange Rates](https://openexchangeapi.com), which
-requires an API key. Set `OPEN_EXCHANGE_RATES_APP_ID` in your `.env` file.
-A free plan is available and is sufficient for personal use.
+No. The system uses [AwesomeAPI](https://economia.awesomeapi.com.br), which is
+free and requires no registration or API key.
 
 **What happens if the API doesn't respond?**
 The "↻ Actualizar" button shows a spinner while trying to fetch data. If it

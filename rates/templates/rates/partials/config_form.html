@@ -8,8 +8,8 @@
 
 <form
   method="post"
-  action="{% url 'update_config' pair.slug %}"
-  hx-post="{% url 'update_config' pair.slug %}"
+  action="{% url 'rates:update_config' pair.slug %}"
+  hx-post="{% url 'rates:update_config' pair.slug %}"
   hx-target="#config-panel"
   hx-swap="innerHTML"
 >

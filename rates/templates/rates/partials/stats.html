@@ -1,6 +1,6 @@
 {% load rates_extras %}
 <div id="stats-section"
-     hx-get="{% url 'stats_partial' pair.slug %}"
+     hx-get="{% url 'rates:stats_partial' pair.slug %}"
      hx-trigger="every 300s"
      hx-swap="outerHTML"
      class="contents">

@@ -39,7 +39,7 @@
     <div class="border-t border-gray-800 mt-auto pt-5">
       {# Register form #}
       <form
-        hx-post="{% url 'add_purchase' pair.slug %}"
+        hx-post="{% url 'rates:add_purchase' pair.slug %}"
         hx-target="#purchases-panel"
         hx-swap="outerHTML"
         class="space-y-3"
@@ -124,7 +124,7 @@
             <td class="px-5 py-3 text-gray-600 text-xs">{{ p.note }}</td>
             <td class="px-5 py-3 text-right">
               <button
-                hx-post="{% url 'delete_purchase' pair.slug p.pk %}"
+                hx-post="{% url 'rates:delete_purchase' pair.slug p.pk %}"
                 hx-target="#purchases-panel"
                 hx-swap="outerHTML"
                 hx-confirm="¿Eliminar esta compra?"

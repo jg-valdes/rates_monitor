@@ -83,7 +83,7 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
   {% for summary in summaries %}
   {% with p=summary.pair ind=summary.indicators dec=summary.decision %}
-  <a href="{% url 'dashboard' p.slug %}"
+  <a href="{% url 'rates:dashboard' p.slug %}"
      class="bg-gray-900 border border-gray-800 hover:border-gray-600 rounded-2xl p-5 transition-colors block">
 
     <div class="flex items-center justify-between mb-4">
@@ -138,7 +138,7 @@
         {% for s in summaries %}
         <tr class="hover:bg-gray-800/20 transition-colors">
           <td class="px-5 py-3">
-            <a href="{% url 'dashboard' s.pair.slug %}"
+            <a href="{% url 'rates:dashboard' s.pair.slug %}"
                class="text-indigo-400 hover:text-indigo-300 font-mono font-semibold">
               {{ s.pair.code }}
             </a>

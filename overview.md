@@ -24,7 +24,7 @@ calculates in real time which route yields more BRL per Uruguayan peso.
 | UYU-USD | How many dollars per 1 Uruguayan peso | Indirect route (step 1) |
 | UYU-BRL | How many reais per 1 Uruguayan peso  | Direct route            |
 
-**Data source:** [Open Exchange Rates](https://openexchangeapi.com) — requires `OPEN_EXCHANGE_RATES_APP_ID` in the environment
+**Data source:** [AwesomeAPI](https://economia.awesomeapi.com.br) — free, no API key required
 **UI language:** Spanish (Spain/Cuba)
 **Database:** SQLite
 
@@ -148,6 +148,9 @@ Shown on `/overview/` with percentage advantage.
 - Comparison with `hmac.compare_digest` (constant-time)
 - Signed token with `signing.dumps()` stored in `rm_access` cookie
   (`httponly`, `samesite=Lax`, `secure` in production, 24h expiry)
+- When `DEBUG=False`: `SECURE_SSL_REDIRECT`, HSTS (1 year), `SESSION_COOKIE_SECURE`,
+  `CSRF_COOKIE_SECURE`, and `SECURE_CONTENT_TYPE_NOSNIFF` are applied automatically
+- `ALLOWED_HOSTS` read from env var in production (wildcard only when `DEBUG=True`)
 
 ### Alerts
 
