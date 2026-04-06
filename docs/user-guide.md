@@ -206,10 +206,10 @@ Configure the conditions per pair:
 - **Alert on COMPRA FUERTE:** checkbox — fires whenever the strong-buy signal is active
 
 Each alert message includes pair name, signal, current rate, deviation,
-confidence level, and suggested amount — identical to what **Enviar Alerta de
-Prueba** sends.
+confidence level, and suggested amount — identical to what **Enviar Alerta**
+sends.
 
-The **Enviar Alerta de Prueba** button sends a real message using current data
+The **Enviar Alerta** button sends a real message using current data
 so you can verify delivery and see the exact message format without waiting for
 a signal condition to trigger.
 
@@ -283,7 +283,7 @@ require a bot token from @BotFather and a chat ID.
    TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
    TELEGRAM_CHAT_ID=987654321
    ```
-5. Click **Enviar Alerta de Prueba** on any pair to confirm delivery.
+5. Click **Enviar Alerta** on any pair to confirm delivery.
 
 **What happens if the API doesn't respond?**
 The "↻ Actualizar" button shows a spinner while trying to fetch data. If it
