@@ -12,8 +12,20 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "factory-boy>=3.3.3",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.1.0",
+    "pytest-django>=4.12.0",
     "ruff>=0.15.9",
 ]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests/test_*.py"]
+addopts = "--cov=rates --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+omit = ["rates/migrations/*", "rates/management/*", "rates/cron.py"]
 
 [tool.ruff]
 line-length = 100
