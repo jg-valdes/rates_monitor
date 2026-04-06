@@ -263,6 +263,8 @@ systemctl reload caddy
 | `ALLOWED_HOSTS` | Yes (prod) | Comma-separated domains/IPs. Required when `DEBUG=False`. |
 | `CSRF_TRUSTED_ORIGINS_EXTRA` | Yes (prod) | Comma-separated origins for CSRF validation (e.g. `https://yourdomain.com`). |
 | `ACCESS_PASSCODE` | No | Site access passcode. Empty = no protection. |
+| `TELEGRAM_BOT_TOKEN` | No | Telegram bot token from @BotFather. Both Telegram vars must be set for alerts to send. |
+| `TELEGRAM_CHAT_ID` | No | Target Telegram chat/group/channel ID. |
 | `DATA_DIR` | No | Database directory. Docker Compose sets this to `/app/data`. |
 
 No API key is needed. Rate data comes from [AwesomeAPI](https://economia.awesomeapi.com.br)

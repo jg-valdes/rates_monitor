@@ -97,7 +97,7 @@ rates_monitor/
 
 **`PairConfig`** (OneToOne with CurrencyPair)
 - `monthly_budget`, `threshold_strong_buy`, `threshold_moderate_buy`, `threshold_do_not_buy`
-- `alert_webhook_url`, `alert_on_strong_buy`, `alert_on_deviation_above`, `alert_on_rate_above`
+- `alert_on_strong_buy`, `alert_on_deviation_above`, `alert_on_rate_above`
 
 ### URLs
 
@@ -154,12 +154,15 @@ Shown on `/overview/` with percentage advantage.
 
 ### Alerts
 
-Configurable webhook per pair. Fires when:
+Telegram notifications via a single project-wide bot (`TELEGRAM_BOT_TOKEN` +
+`TELEGRAM_CHAT_ID` env vars). Fires per pair when:
 - STRONG BUY signal is active (if enabled)
 - Deviation exceeds configured threshold
 - Rate exceeds configured threshold
 
-Payload includes: pair, signal, rate, deviation, confidence, suggested amount.
+Message includes: pair name, signal (Spanish), rate, deviation, confidence, and
+suggested amount in Markdown format. A **Test Alert** button in the config panel
+sends a real-data message on demand.
 
 ### CLI command
 

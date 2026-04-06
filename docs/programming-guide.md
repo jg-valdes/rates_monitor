@@ -189,13 +189,20 @@ three pairs.
 
 ```python
 def check_and_send(indicators, decision, config, pair_name: str = "") -> list[str]:
+def send_test_alert(indicators, decision, config, pair_name: str) -> bool:
 ```
 
-- Never raises exceptions: webhook errors are logged but do not interrupt the
-  flow.
-- Includes `pair_name` as a prefix in all messages.
-- The webhook payload includes the `pair` field so the receiver can filter by
-  pair.
+- Sends via the Telegram Bot API (`sendMessage`) using `TELEGRAM_BOT_TOKEN` and
+  `TELEGRAM_CHAT_ID` from settings. Both must be set; if either is empty, sending
+  is skipped silently.
+- `check_and_send` — evaluates three conditions (strong-buy signal, deviation
+  threshold, rate threshold) and calls `_send_telegram` for each triggered one.
+  Network errors are logged but never re-raised, so they cannot interrupt the
+  cron flow.
+- `send_test_alert` — sends the same message format as production alerts using
+  real current-data indicators. Used by the UI test button.
+- `_build_message` — shared helper that formats the Telegram Markdown message so
+  both production alerts and test alerts look identical.
 
 ---
 
@@ -322,7 +329,7 @@ Use the module-level logger, never `print()`:
 logger = logging.getLogger(__name__)
 logger.info("Fetching 90 days of USD-BRL")
 logger.warning("Alert triggered")
-logger.error("Error sending webhook")
+logger.error("Error sending Telegram alert for %s: %s", pair_name, exc)
 ```
 
 ---
@@ -411,7 +418,8 @@ To test views with queries, use `@pytest.mark.django_db` with pytest-django fixt
 | `ALLOWED_HOSTS` | *(empty)* | Comma-separated domains/IPs. Required when `DEBUG=False`. In dev (`DEBUG=True`) all hosts are allowed automatically. |
 | `CSRF_TRUSTED_ORIGINS_EXTRA` | *(empty)* | Comma-separated origins for CSRF validation in production (e.g. `https://yourdomain.com`). |
 | `ACCESS_PASSCODE` | *(empty)* | Site access passcode. Empty = no protection. |
-| *(none)* | — | Data source is [AwesomeAPI](https://economia.awesomeapi.com.br) — free, no API key required. |
+| `TELEGRAM_BOT_TOKEN` | *(empty)* | Telegram bot token from @BotFather. Both Telegram vars must be set for alerts to send. |
+| `TELEGRAM_CHAT_ID` | *(empty)* | Target Telegram chat/group/channel ID. |
 
 When `DEBUG=False`, Django automatically sets `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`
 (1 year), `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, and `SECURE_CONTENT_TYPE_NOSNIFF`.

@@ -50,15 +50,7 @@
       </div>
     </div>
 
-    <p class="text-xs text-gray-600 uppercase tracking-widest pt-1">Alertas</p>
-
-    <div>
-      <label class="block text-gray-400 mb-1 text-xs">URL Webhook (Telegram / Discord / n8n)</label>
-      <input type="url" name="alert_webhook_url" value="{{ config.alert_webhook_url }}"
-        placeholder="https://..."
-        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white
-               focus:outline-none focus:border-indigo-500 placeholder-gray-600">
-    </div>
+    <p class="text-xs text-gray-600 uppercase tracking-widest pt-1">Alertas Telegram</p>
 
     <div class="grid grid-cols-2 gap-2">
       <div>
@@ -93,5 +85,17 @@
              rounded-lg px-4 py-2.5 font-semibold text-sm transition-colors mt-1">
       Guardar Configuración
     </button>
+
+    <div class="flex items-center gap-3 mt-1">
+      <button type="button"
+        hx-post="{% url 'rates:test_alert' pair.slug %}"
+        hx-target="#alert-feedback"
+        hx-swap="innerHTML"
+        class="flex-1 bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-white
+               rounded-lg px-4 py-2 font-semibold text-sm transition-colors">
+        Enviar Alerta de Prueba
+      </button>
+      <span id="alert-feedback"></span>
+    </div>
   </div>
 </form>

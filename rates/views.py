@@ -4,11 +4,13 @@ import logging
 from django.conf import settings
 from django.core import signing
 from django.db.models import Count, Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 import hmac
 
 from rates.models import CurrencyPair, ExchangeRate, PairConfig, Purchase
+from rates.services.alerts import send_test_alert
 from rates.services.cross_pair import compute_cross_pair
 from rates.services.decision import build_decision
 from rates.services.fetcher import fetch_and_store
@@ -167,7 +169,6 @@ def update_config(request, pair_code):
     config.threshold_strong_buy = _float("threshold_strong_buy", config.threshold_strong_buy)
     config.threshold_moderate_buy = _float("threshold_moderate_buy", config.threshold_moderate_buy)
     config.threshold_do_not_buy = _float("threshold_do_not_buy", config.threshold_do_not_buy)
-    config.alert_webhook_url = p.get("alert_webhook_url", config.alert_webhook_url).strip()
     config.alert_on_strong_buy = "alert_on_strong_buy" in p
     config.alert_on_deviation_above = _float_or_none("alert_on_deviation_above")
     config.alert_on_rate_above = _float_or_none("alert_on_rate_above")
@@ -180,6 +181,32 @@ def update_config(request, pair_code):
             {"pair": pair, "config": config, "saved": True},
         )
     return redirect("rates:dashboard", pair_code=pair.slug)
+
+
+# ── Test alert ────────────────────────────────────────────────────────────────
+
+
+@require_http_methods(["POST"])
+def test_alert(request, pair_code):
+    pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    config = _get_or_create_config(pair)
+    rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
+    indicators = compute_all(rates_list)
+    if not indicators:
+        return HttpResponse(
+            '<span class="text-amber-400 text-xs">⚠ Sin datos suficientes para enviar alerta</span>'
+        )
+    decision = build_decision(indicators, config)
+    try:
+        ok = send_test_alert(indicators, decision, config, pair_name=pair.name)
+    except Exception:
+        logger.warning("test_alert failed for %s", pair.code, exc_info=True)
+        ok = False
+    if ok:
+        return HttpResponse('<span class="text-emerald-400 text-xs">✓ Alerta enviada a Telegram</span>')
+    return HttpResponse(
+        '<span class="text-red-400 text-xs">✕ Error — revisa TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID</span>'
+    )
 
 
 # ── Purchases ─────────────────────────────────────────────────────────────────
