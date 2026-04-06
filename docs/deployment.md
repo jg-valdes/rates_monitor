@@ -117,6 +117,8 @@ python3 -c "import secrets; print(secrets.token_urlsafe(50))"
 ### 3. Run the deployment script
 
 ```bash
+cp deploy/deploy.template.sh deploy/deploy.sh
+chmod +x deploy/deploy.sh
 bash deploy/deploy.sh --setup
 ```
 
@@ -177,7 +179,8 @@ journalctl -u caddy -f
 
 ```bash
 cd /opt/rates-monitor
-git pull
+# only if you've made changes to deploy.template.sh; you should pull changes and repeat steps for copy template and give it executable permission)
+# git pull (if deploy template ahs changes) + repeat steps for copy template and chmod +x
 bash deploy/deploy.sh
 ```
 

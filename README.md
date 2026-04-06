@@ -62,11 +62,6 @@ CSRF_TRUSTED_ORIGINS_EXTRA=…   # server domain or IP (for CSRF validation)
 ACCESS_PASSCODE=…              # access passcode (empty = no protection)
 DATA_DIR=                      # database directory (Docker sets this automatically)
 ```
-
-When `DEBUG=False`, the following security settings are applied automatically:
-`SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS` (1 year), `SESSION_COOKIE_SECURE`,
-`CSRF_COOKIE_SECURE`, and `SECURE_CONTENT_TYPE_NOSNIFF`. No extra configuration needed.
-
 ---
 
 ## Stack
