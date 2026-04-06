@@ -1,4 +1,5 @@
 import logging
+import time
 
 from django.core.management.base import BaseCommand
 
@@ -46,7 +47,11 @@ class Command(BaseCommand):
                 self.stderr.write(self.style.ERROR(f"Pair not found: {pair_filter}"))
                 return
 
-        for pair in pairs:
+        pairs = list(pairs)
+        for i, pair in enumerate(pairs):
+            if i:
+                # Brief pause between pairs to avoid hitting AwesomeAPI rate limits.
+                time.sleep(1)
             self._process_pair(pair, days, no_alerts=options["no_alerts"])
 
         # Cross-pair route comparison after all pairs are updated

@@ -103,7 +103,7 @@ Minimum required values:
 ```env
 SECRET_KEY=<50-character-random-string>
 DEBUG=False
-CORS_ALLOWED_ORIGINS_EXTRA=yourdomain.com
+ALLOWED_HOSTS=yourdomain.com
 CSRF_TRUSTED_ORIGINS_EXTRA=yourdomain.com
 ACCESS_PASSCODE=<your-access-code>
 ```
@@ -256,10 +256,30 @@ systemctl reload caddy
 | Variable | Required | Description |
 |---|---|---|
 | `SECRET_KEY` | Yes | Django secret key. Generate randomly. |
-| `DEBUG` | Yes | `False` in production. |
-| `ALLOWED_HOSTS` | Yes | Server domain (must match the Caddy config). |
+| `DEBUG` | Yes | Must be `False` in production. |
+| `ALLOWED_HOSTS` | Yes (prod) | Comma-separated domains/IPs. Required when `DEBUG=False`. |
+| `CSRF_TRUSTED_ORIGINS_EXTRA` | Yes (prod) | Comma-separated origins for CSRF validation (e.g. `https://yourdomain.com`). |
 | `ACCESS_PASSCODE` | No | Site access passcode. Empty = no protection. |
 | `DATA_DIR` | No | Database directory. Docker Compose sets this to `/app/data`. |
+
+No API key is needed. Rate data comes from [AwesomeAPI](https://economia.awesomeapi.com.br)
+(free, no registration). Requests are throttled automatically: 1 s delay between pairs and
+exponential backoff on HTTP 429 responses.
+
+When `DEBUG=False`, the following security settings are applied automatically —
+no additional env vars are needed:
+
+| Setting | Value |
+|---|---|
+| `SECURE_SSL_REDIRECT` | `True` |
+| `SECURE_HSTS_SECONDS` | `31536000` (1 year, with subdomains + preload) |
+| `SESSION_COOKIE_SECURE` | `True` |
+| `CSRF_COOKIE_SECURE` | `True` |
+| `SECURE_CONTENT_TYPE_NOSNIFF` | `True` |
+
+> Caddy already handles HTTPS termination and HTTP→HTTPS redirects on the host.
+> `SECURE_SSL_REDIRECT` inside Django causes no double-redirect because Caddy
+> forwards the `X-Forwarded-Proto: https` header, which Django reads correctly.
 
 ---
 

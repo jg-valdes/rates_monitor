@@ -55,19 +55,23 @@ A ready-to-use Caddyfile template is provided at `deploy/Caddyfile`.
 Copy `.env.example` to `.env` and adjust the values:
 
 ```env
-SECRET_KEY=…          # Django secret key (required in production)
+SECRET_KEY=…                   # Django secret key (required in production)
 DEBUG=False
-CORS_ALLOWED_ORIGINS_EXTRA=…       # server domain or IP
-CSRF_TRUSTED_ORIGINS_EXTRA=…       # server domain or IP
-ACCESS_PASSCODE=…     # access passcode (empty = no protection)
-DATA_DIR=             # database directory (Docker sets this automatically)
+ALLOWED_HOSTS=yourdomain.com   # comma-separated; required when DEBUG=False
+CSRF_TRUSTED_ORIGINS_EXTRA=…   # server domain or IP (for CSRF validation)
+ACCESS_PASSCODE=…              # access passcode (empty = no protection)
+DATA_DIR=                      # database directory (Docker sets this automatically)
 ```
+
+When `DEBUG=False`, the following security settings are applied automatically:
+`SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS` (1 year), `SESSION_COOKIE_SECURE`,
+`CSRF_COOKIE_SECURE`, and `SECURE_CONTENT_TYPE_NOSNIFF`. No extra configuration needed.
 
 ---
 
 ## Stack
 
-Python 3.14 · Django 6 · Gunicorn · django-crontab · Caddy · HTMX · Tailwind CSS · Chart.js · SQLite · Docker
+Python 3.14 · Django 6 · Gunicorn · django-crontab · Caddy · HTMX · Tailwind CSS · Chart.js · SQLite · Docker · [AwesomeAPI](https://economia.awesomeapi.com.br) (no key required)
 
 ## Screenshots
 

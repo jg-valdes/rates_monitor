@@ -1,16 +1,20 @@
-import hmac
 import json
+import logging
 
 from django.conf import settings
 from django.core import signing
+from django.db.models import Count, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
+import hmac
 
 from rates.models import CurrencyPair, ExchangeRate, PairConfig, Purchase
 from rates.services.cross_pair import compute_cross_pair
 from rates.services.decision import build_decision
 from rates.services.fetcher import fetch_and_store
 from rates.services.indicators import compute_all, compute_rolling_ma
+
+logger = logging.getLogger(__name__)
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -36,7 +40,7 @@ def login_view(request):
 
 
 def logout_view(request):
-    response = redirect("/login/")
+    response = redirect("rates:login")
     response.delete_cookie("rm_access")
     return response
 
@@ -46,10 +50,40 @@ def logout_view(request):
 
 def overview(request):
     pairs = list(CurrencyPair.objects.filter(active=True))
+    pair_ids = [p.id for p in pairs]
+
+    # One query for all rates, pre-grouped by pair
+    rates_by_pair: dict[int, list] = {p.id: [] for p in pairs}
+    for rate in ExchangeRate.objects.filter(pair_id__in=pair_ids).order_by("date"):
+        rates_by_pair[rate.pair_id].append(rate)
+
+    # One query (+ optional bulk insert) for all configs
+    configs = {c.pair_id: c for c in PairConfig.objects.filter(pair_id__in=pair_ids)}
+    missing = [p for p in pairs if p.id not in configs]
+    if missing:
+        PairConfig.objects.bulk_create([PairConfig(pair=p) for p in missing])
+        configs = {c.pair_id: c for c in PairConfig.objects.filter(pair_id__in=pair_ids)}
+
+    # One aggregation for all purchase totals
+    totals_map = {}
+    for row in (
+        Purchase.objects.filter(pair_id__in=pair_ids)
+        .values("pair_id")
+        .annotate(total_spent=Sum("amount_spent"), total_received=Sum("amount_received"), count=Count("id"))
+    ):
+        spent = row["total_spent"] or 0.0
+        received = row["total_received"] or 0.0
+        totals_map[row["pair_id"]] = {
+            "total_spent": round(spent, 2),
+            "total_received": round(received, 2),
+            "avg_rate": round(received / spent, 6) if spent else 0.0,
+            "count": row["count"],
+        }
+
     summaries = []
     for pair in pairs:
-        rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
-        config = _get_or_create_config(pair)
+        rates_list = rates_by_pair.get(pair.id, [])
+        config = configs[pair.id]
         indicators = compute_all(rates_list)
         decision = build_decision(indicators, config) if indicators else None
         summaries.append(
@@ -57,7 +91,7 @@ def overview(request):
                 "pair": pair,
                 "indicators": indicators,
                 "decision": decision,
-                "totals": _purchase_totals(pair),
+                "totals": totals_map.get(pair.id),
             }
         )
 
@@ -99,7 +133,7 @@ def refresh_data(request, pair_code):
     try:
         fetch_and_store(pair, days=3)
     except Exception:
-        pass  # fail silently — stale data is better than an error page
+        logger.warning("refresh_data: fetch_and_store failed for %s", pair.code, exc_info=True)
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
     indicators = compute_all(rates_list)
     decision = build_decision(indicators, config) if indicators else None
@@ -119,7 +153,7 @@ def update_config(request, pair_code):
     def _float(key, default):
         try:
             return float(p[key])
-        except KeyError, ValueError, TypeError:
+        except (KeyError, ValueError, TypeError):
             return default
 
     def _float_or_none(key):
@@ -145,7 +179,7 @@ def update_config(request, pair_code):
             "rates/partials/config_form.html",
             {"pair": pair, "config": config, "saved": True},
         )
-    return redirect("dashboard", pair_code=pair.slug)
+    return redirect("rates:dashboard", pair_code=pair.slug)
 
 
 # ── Purchases ─────────────────────────────────────────────────────────────────
@@ -162,7 +196,7 @@ def add_purchase(request, pair_code):
             amount_received=float(request.POST["amount_received"]),
             note=request.POST.get("note", "").strip(),
         )
-    except KeyError, ValueError:
+    except (KeyError, ValueError):
         pass
     return render(
         request,
@@ -194,17 +228,17 @@ def delete_purchase(request, pair_code, pk):
 
 
 def _purchase_totals(pair) -> dict | None:
-    qs = Purchase.objects.filter(pair=pair)
-    if not qs.exists():
+    items = list(Purchase.objects.filter(pair=pair))
+    if not items:
         return None
-    total_spent = sum(p.amount_spent for p in qs)
-    total_received = sum(p.amount_received for p in qs)
+    total_spent = sum(p.amount_spent for p in items)
+    total_received = sum(p.amount_received for p in items)
     avg_rate = round(total_received / total_spent, 6) if total_spent else 0.0
     return {
         "total_spent": round(total_spent, 2),
         "total_received": round(total_received, 2),
         "avg_rate": avg_rate,
-        "count": qs.count(),
+        "count": len(items),
     }
 
 

@@ -2,6 +2,8 @@ from django.urls import path
 
 from rates import views
 
+app_name = "rates"
+
 urlpatterns = [
     # Root → overview
     path("", views.overview, name="root"),

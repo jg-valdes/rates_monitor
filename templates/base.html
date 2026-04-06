@@ -22,14 +22,14 @@
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
 
       {# Brand #}
-      <a href="{% url 'overview' %}" class="flex items-center gap-2 shrink-0">
+      <a href="{% url 'rates:overview' %}" class="flex items-center gap-2 shrink-0">
         <span class="text-indigo-400 font-bold text-base tracking-tight">Monitor</span>
         <span class="text-gray-600 text-sm">Cambiario</span>
       </a>
 
       {# Pair tabs #}
       <div class="flex items-center gap-1 overflow-x-auto">
-        <a href="{% url 'overview' %}"
+        <a href="{% url 'rates:overview' %}"
            class="px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap
                   {% if request.resolver_match.url_name == 'overview' or request.resolver_match.url_name == 'root' %}
                     bg-indigo-600 text-white font-semibold
@@ -39,7 +39,7 @@
           Resumen
         </a>
         {% for p in all_pairs %}
-        <a href="{% url 'dashboard' p.slug %}"
+        <a href="{% url 'rates:dashboard' p.slug %}"
            class="px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap
                   {% if pair.code == p.code %}
                     bg-indigo-600 text-white font-semibold
@@ -58,7 +58,7 @@
         <button
           class="htmx-stable text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1.5
                  bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg"
-          hx-post="{% url 'refresh_data' pair.slug %}"
+          hx-post="{% url 'rates:refresh_data' pair.slug %}"
           hx-target="#stats-section"
           hx-swap="outerHTML"
           hx-indicator="#refresh-spinner"
@@ -66,7 +66,7 @@
           ↻ Actualizar
         </button>
         {% endif %}
-        <a href="{% url 'logout' %}"
+        <a href="{% url 'rates:logout' %}"
            class="text-sm text-gray-600 hover:text-gray-300 transition-colors">
           Salir
         </a>
@@ -80,7 +80,7 @@
   </main>
 
   <footer class="text-center text-gray-700 text-xs py-6">
-    Datos de openexchangeapi.org &bull; Se actualiza cada 5 min
+    Datos de economia.awesomeapi.com.br &bull; Se actualiza cada hora
   </footer>
 </body>
 </html>
