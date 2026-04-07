@@ -12,7 +12,8 @@ rates_monitor/
 ├── rates/                         # Single Django app
 │   ├── migrations/                # 0001–0005 (schema + data + Purchase)
 │   ├── services/                  # Pure business logic (no Django)
-│   │   ├── fetcher.py             # API data fetching per pair
+│   │   ├── fetcher.py             # AwesomeAPI data fetching per pair
+│   │   ├── oer_fetcher.py         # Open Exchange Rates fetcher (cross-rate math)
 │   │   ├── indicators.py          # Technical indicator computation
 │   │   ├── decision.py            # Signal engine and capital allocation
 │   │   ├── cross_pair.py          # UYU → BRL route comparator
@@ -144,6 +145,35 @@ def fetch_and_store(pair: CurrencyPair, days: int = 90) -> tuple[int, int]:
 - Retries up to 3 times with exponential backoff (2 s → 4 s) on HTTP 429.
 - Callers should add a delay between pairs to avoid rate limiting (the management
   command waits 1 s between pairs; single-pair view refreshes are safe as-is).
+- Active when `EXCHANGE_RATE_SOURCE=awesomeapi` (the default).
+
+### `services/oer_fetcher.py`
+
+```python
+def fetch_and_store(days: int = 90) -> tuple[int, int]:
+```
+
+- Uses [Open Exchange Rates](https://openexchangerates.org). Requires
+  `OPENEXCHANGERATES_APP_ID` in settings.
+- OER uses USD as the fixed base, so all three pairs are derived from a
+  **single API call** that returns `BRL` and `UYU` rates relative to USD:
+
+  ```
+  USD-BRL  = rates["BRL"]                  (direct)
+  UYU-USD  = 1 / rates["UYU"]             (inverted)
+  UYU-BRL  = rates["BRL"] / rates["UYU"]  (cross via USD)
+  ```
+
+- `days == 1` → fetches `/api/latest.json` (always available, free tier).
+- `days > 1` → iterates business days calling `/api/historical/YYYY-MM-DD.json`.
+  On HTTP 403 (free-plan restriction) the loop aborts and falls back to
+  latest-only automatically.
+- `high` / `low` are stored as `None` (OER free tier does not provide intraday range).
+- Active when `EXCHANGE_RATE_SOURCE=openexchangerates`.
+
+**Switching sources:** set `EXCHANGE_RATE_SOURCE` in `.env`. The management
+command and `refresh_data` view both read this setting and dispatch accordingly.
+No other code changes are required.
 
 ### `services/indicators.py`
 
@@ -231,7 +261,7 @@ additional database table is needed.
 
 ```python
 # settings.py
-ACCESS_PASSCODE = os.environ.get("ACCESS_PASSCODE", "")
+ACCESS_PASSCODE = config("ACCESS_PASSCODE", default="")
 # Empty → middleware disabled (development convenience)
 ```
 
@@ -421,6 +451,10 @@ To test views with queries, use `@pytest.mark.django_db` with pytest-django fixt
 
 ## Environment variables
 
+All variables are read by [python-decouple](https://github.com/HBNetwork/python-decouple),
+which looks for them in `.env`, then in the OS environment. No `os.environ` calls remain
+in `settings.py`.
+
 | Variable | Default | Description |
 |---|---|---|
 | `SECRET_KEY` | *(dev value)* | Django secret key. Change in production. |
@@ -430,6 +464,9 @@ To test views with queries, use `@pytest.mark.django_db` with pytest-django fixt
 | `ACCESS_PASSCODE` | *(empty)* | Site access passcode. Empty = no protection. |
 | `TELEGRAM_BOT_TOKEN` | *(empty)* | Telegram bot token from @BotFather. Both Telegram vars must be set for alerts to send. |
 | `TELEGRAM_CHAT_ID` | *(empty)* | Target Telegram chat/group/channel ID. |
+| `EXCHANGE_RATE_SOURCE` | `awesomeapi` | Rate data source: `awesomeapi` or `openexchangerates`. |
+| `OPENEXCHANGERATES_APP_ID` | *(empty)* | Required when `EXCHANGE_RATE_SOURCE=openexchangerates`. Get a free key at openexchangerates.org. |
+| `DATA_DIR` | *(project root)* | Directory for `db.sqlite3`. Docker Compose sets this to `/app/data`. |
 
 When `DEBUG=False`, Django automatically sets `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`
 (1 year), `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, and `SECURE_CONTENT_TYPE_NOSNIFF`.
@@ -443,4 +480,7 @@ DEBUG=False
 ALLOWED_HOSTS=yourdomain.com
 CSRF_TRUSTED_ORIGINS_EXTRA=yourdomain.com
 ACCESS_PASSCODE=your-secret-code
+# Optional: switch to Open Exchange Rates
+# EXCHANGE_RATE_SOURCE=openexchangerates
+# OPENEXCHANGERATES_APP_ID=your-oer-app-id
 ```

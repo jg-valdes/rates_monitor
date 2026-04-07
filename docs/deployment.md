@@ -266,10 +266,17 @@ systemctl reload caddy
 | `TELEGRAM_BOT_TOKEN` | No | Telegram bot token from @BotFather. Both Telegram vars must be set for alerts to send. |
 | `TELEGRAM_CHAT_ID` | No | Target Telegram chat/group/channel ID. |
 | `DATA_DIR` | No | Database directory. Docker Compose sets this to `/app/data`. |
+| `EXCHANGE_RATE_SOURCE` | No | `awesomeapi` (default, free) or `openexchangerates`. |
+| `OPENEXCHANGERATES_APP_ID` | No* | Required when `EXCHANGE_RATE_SOURCE=openexchangerates`. |
 
-No API key is needed. Rate data comes from [AwesomeAPI](https://economia.awesomeapi.com.br)
-(free, no registration). Requests are throttled automatically: 1 s delay between pairs and
-exponential backoff on HTTP 429 responses.
+**Default source:** [AwesomeAPI](https://economia.awesomeapi.com.br) — free, no registration,
+no API key. Requests are throttled automatically: 1 s delay between pairs and exponential
+backoff on HTTP 429 responses.
+
+**Alternative source:** [Open Exchange Rates](https://openexchangerates.org) — set
+`EXCHANGE_RATE_SOURCE=openexchangerates` and provide `OPENEXCHANGERATES_APP_ID`. The free
+plan supports current rates only; historical backfills require a paid plan (the app detects
+the plan tier automatically and falls back to current-only on HTTP 403).
 
 When `DEBUG=False`, the following security settings are applied automatically —
 no additional env vars are needed:
