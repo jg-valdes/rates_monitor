@@ -84,13 +84,18 @@ ACCESS_PASSCODE=…              # access passcode (empty = no protection)
 TELEGRAM_BOT_TOKEN=…           # from @BotFather (optional)
 TELEGRAM_CHAT_ID=…             # target chat/group ID (optional)
 DATA_DIR=                      # database directory (Docker sets this automatically)
+
+# Exchange rate source (choose one):
+EXCHANGE_RATE_SOURCE=awesomeapi          # default — free, no key needed
+# EXCHANGE_RATE_SOURCE=openexchangerates # alternative — requires app ID below
+# OPENEXCHANGERATES_APP_ID=…            # from openexchangerates.org (free or paid)
 ```
 
 ---
 
 ## Stack
 
-Python 3.14 · Django 6 · Gunicorn · django-crontab · Caddy · HTMX · Tailwind CSS · Chart.js · SQLite · Docker · [AwesomeAPI](https://economia.awesomeapi.com.br) (no key required)
+Python 3.14 · Django 6 · Gunicorn · django-crontab · python-decouple · Caddy · HTMX · Tailwind CSS · Chart.js · SQLite · Docker · [AwesomeAPI](https://economia.awesomeapi.com.br) (default, no key) · [Open Exchange Rates](https://openexchangerates.org) (optional)
 
 ## Screenshots
 
