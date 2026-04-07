@@ -24,7 +24,9 @@ calculates in real time which route yields more BRL per Uruguayan peso.
 | UYU-USD | How many dollars per 1 Uruguayan peso | Indirect route (step 1) |
 | UYU-BRL | How many reais per 1 Uruguayan peso  | Direct route            |
 
-**Data source:** [AwesomeAPI](https://economia.awesomeapi.com.br) — free, no API key required
+**Data sources (configurable via `EXCHANGE_RATE_SOURCE`):**
+- [AwesomeAPI](https://economia.awesomeapi.com.br) — default, free, no key required
+- [Open Exchange Rates](https://openexchangerates.org) — alternative; USD is the fixed base, cross rates computed manually
 **UI language:** Spanish (Spain/Cuba)
 **Database:** SQLite
 
@@ -58,7 +60,8 @@ rates_monitor/
 │   ├── templatetags/
 │   │   └── rates_extras.py  # filters: signal_label, confidence_label, momentum_label
 │   ├── services/
-│   │   ├── fetcher.py       # fetch_and_store(pair, days)
+│   │   ├── fetcher.py       # fetch_and_store(pair, days) — AwesomeAPI
+│   │   ├── oer_fetcher.py   # fetch_and_store(days) — Open Exchange Rates
 │   │   ├── indicators.py    # MA, deviation, momentum, volatility
 │   │   ├── decision.py      # signal, confidence, capital allocation
 │   │   ├── cross_pair.py    # UYU→BRL route comparator
@@ -86,7 +89,7 @@ rates_monitor/
 **`CurrencyPair`**
 - `code` — e.g. `"USD-BRL"` (unique)
 - `name` — e.g. `"Dólar / Real"`
-- `api_code` — code used in the AwesomeAPI URL
+- `api_code` — code used in the AwesomeAPI URL (not used by the OER fetcher)
 - `active` — enabled/disabled
 - `slug` (property) — `code.lower()`, used in URLs
 

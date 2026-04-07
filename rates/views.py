@@ -14,6 +14,7 @@ from rates.services.alerts import send_test_alert
 from rates.services.cross_pair import compute_cross_pair
 from rates.services.decision import build_decision
 from rates.services.fetcher import fetch_and_store
+from rates.services import oer_fetcher
 from rates.services.indicators import compute_all, compute_rolling_ma
 
 logger = logging.getLogger(__name__)
@@ -132,10 +133,14 @@ def stats_partial(request, pair_code):
 def refresh_data(request, pair_code):
     pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
     config = _get_or_create_config(pair)
+    source = getattr(settings, "EXCHANGE_RATE_SOURCE", "awesomeapi")
     try:
-        fetch_and_store(pair, days=3)
+        if source == "openexchangerates":
+            oer_fetcher.fetch_and_store(days=3)
+        else:
+            fetch_and_store(pair, days=3)
     except Exception:
-        logger.warning("refresh_data: fetch_and_store failed for %s", pair.code, exc_info=True)
+        logger.warning("refresh_data: fetch failed for %s", pair.code, exc_info=True)
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
     indicators = compute_all(rates_list)
     decision = build_decision(indicators, config) if indicators else None

@@ -1,28 +1,23 @@
-import os
 from pathlib import Path
+
+from decouple import config, Csv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY",
-    "dev-only-key-change-this-for-production-xk2p9mq7vc",
-)
-DEBUG = os.environ.get("DEBUG", "True") == "True"
+SECRET_KEY = config("SECRET_KEY", default="dev-only-key-change-this-for-production-xk2p9mq7vc")
+DEBUG = config("DEBUG", default=True, cast=bool)
 
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
 else:
-    ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()]
+    ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="", cast=Csv())
 
 if not DEBUG:
 
     def _origins(env_var: str) -> list[str]:
         """Parse a comma-separated list of hostnames/origins and ensure each has a scheme."""
         result = []
-        for h in os.environ.get(env_var, "").split(","):
-            h = h.strip()
-            if not h:
-                continue
+        for h in config(env_var, default="", cast=Csv()):
             if not h.startswith(("http://", "https://")):
                 h = f"https://{h}"
             result.append(h)
@@ -31,12 +26,18 @@ if not DEBUG:
     CSRF_TRUSTED_ORIGINS = _origins("CSRF_TRUSTED_ORIGINS_EXTRA")
 
 # Set this in .env to enable the passcode gate. Leave empty to disable in dev.
-ACCESS_PASSCODE = os.environ.get("ACCESS_PASSCODE", "")
+ACCESS_PASSCODE = config("ACCESS_PASSCODE", default="")
+
+# ── Exchange rate source ──────────────────────────────────────────────────────
+# "awesomeapi" (default, no key needed) or "openexchangerates" (requires key).
+EXCHANGE_RATE_SOURCE = config("EXCHANGE_RATE_SOURCE", default="awesomeapi")
+# Required when EXCHANGE_RATE_SOURCE = "openexchangerates"
+OPENEXCHANGERATES_APP_ID = config("OPENEXCHANGERATES_APP_ID", default="")
 
 # ── Telegram alerts ───────────────────────────────────────────────────────────
 # Both must be set for alerts to be sent. Leave empty to disable.
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
+TELEGRAM_CHAT_ID = config("TELEGRAM_CHAT_ID", default="")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -81,7 +82,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-_data_dir = os.environ.get("DATA_DIR", "")
+_data_dir = config("DATA_DIR", default="")
 DATA_DIR = Path(_data_dir) if _data_dir else BASE_DIR
 
 DATABASES = {

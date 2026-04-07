@@ -1,6 +1,7 @@
 import logging
 import time
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from rates.models import CurrencyPair, ExchangeRate, PairConfig
@@ -9,6 +10,7 @@ from rates.services.cross_pair import compute_cross_pair
 from rates.services.decision import build_decision
 from rates.services.fetcher import fetch_and_store
 from rates.services.indicators import compute_all
+from rates.services import oer_fetcher
 from rates.translations import CONFIDENCE_LABELS, MOMENTUM_LABELS, SIGNAL_LABELS
 
 logger = logging.getLogger(__name__)
@@ -47,12 +49,17 @@ class Command(BaseCommand):
                 self.stderr.write(self.style.ERROR(f"Pair not found: {pair_filter}"))
                 return
 
+        source = getattr(settings, "EXCHANGE_RATE_SOURCE", "awesomeapi")
         pairs = list(pairs)
-        for i, pair in enumerate(pairs):
-            if i:
-                # Brief pause between pairs to avoid hitting AwesomeAPI rate limits.
-                time.sleep(1)
-            self._process_pair(pair, days, no_alerts=options["no_alerts"])
+
+        if source == "openexchangerates":
+            self._fetch_oer(days, pairs, no_alerts=options["no_alerts"])
+        else:
+            for i, pair in enumerate(pairs):
+                if i:
+                    # Brief pause between pairs to avoid hitting AwesomeAPI rate limits.
+                    time.sleep(1)
+                self._process_pair(pair, days, no_alerts=options["no_alerts"])
 
         # Cross-pair route comparison after all pairs are updated
         cross = compute_cross_pair()
@@ -71,6 +78,55 @@ class Command(BaseCommand):
                 )
             )
             self.stdout.write("─────────────────────────────────────────────────\n")
+
+    def _fetch_oer(self, days, pairs, no_alerts):
+        """Fetch all pairs at once via Open Exchange Rates, then evaluate alerts."""
+        self.stdout.write(f"\nFetching last {days} days via Open Exchange Rates…")
+        try:
+            created, updated = oer_fetcher.fetch_and_store(days=days)
+        except Exception as exc:
+            self.stderr.write(self.style.ERROR(f"  OER fetch error: {exc}"))
+            return
+        self.stdout.write(self.style.SUCCESS(f"  {created} new records, {updated} updated"))
+
+        for pair in pairs:
+            rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
+            if not rates_list:
+                continue
+            config, _ = PairConfig.objects.get_or_create(pair=pair)
+            indicators = compute_all(rates_list)
+            decision = build_decision(indicators, config)
+            self._print_indicators(pair, indicators, decision, config)
+            if not no_alerts:
+                triggered = check_and_send(indicators, decision, config, pair_name=pair.name)
+                if triggered:
+                    for alert in triggered:
+                        self.stdout.write(self.style.WARNING(f"    🔔 {alert}"))
+                else:
+                    self.stdout.write("    No alerts triggered.")
+
+    def _print_indicators(self, pair, indicators, decision, config):
+        signal_es = SIGNAL_LABELS.get(decision["signal"], decision["signal"])
+        confidence_es = CONFIDENCE_LABELS.get(decision["confidence"], decision["confidence"])
+        momentum_es = MOMENTUM_LABELS.get(indicators["momentum"], indicators["momentum"])
+        direction = "above" if indicators["deviation"] > 0 else "below"
+
+        self.stdout.write(f"\n  ── Indicators {pair.code} ───────────────────────")
+        self.stdout.write(f"    Date:        {indicators['current_date']}")
+        self.stdout.write(f"    Rate:        {indicators['current_rate']:.4f}")
+        self.stdout.write(f"    MA 30:       {indicators['ma30']:.4f}")
+        self.stdout.write(f"    MA 90:       {indicators['ma90']:.4f}")
+        self.stdout.write(f"    Deviation:   {indicators['deviation']:+.2f}%  ({direction} MA90)")
+        self.stdout.write(
+            f"    Momentum:    {momentum_es}   Volatility: {indicators['volatility']:.4f}"
+        )
+        self.stdout.write(
+            self.style.SUCCESS(f"    Signal: {signal_es}  [confidence {confidence_es}]")
+        )
+        self.stdout.write(
+            f"    Allocation:  ${decision['suggested_amount']:.0f}  "
+            f"({decision['allocation_pct']}% of ${config.monthly_budget:.0f} budget)"
+        )
 
     def _process_pair(self, pair, days, no_alerts):
         self.stdout.write(f"\nFetching last {days} days of {pair.code} — {pair.name}…")
@@ -91,28 +147,7 @@ class Command(BaseCommand):
         config, _ = PairConfig.objects.get_or_create(pair=pair)
         indicators = compute_all(rates_list)
         decision = build_decision(indicators, config)
-
-        signal_es = SIGNAL_LABELS.get(decision["signal"], decision["signal"])
-        confidence_es = CONFIDENCE_LABELS.get(decision["confidence"], decision["confidence"])
-        momentum_es = MOMENTUM_LABELS.get(indicators["momentum"], indicators["momentum"])
-        direction = "above" if indicators["deviation"] > 0 else "below"
-
-        self.stdout.write(f"  ── Indicators {pair.code} ───────────────────────")
-        self.stdout.write(f"    Date:        {indicators['current_date']}")
-        self.stdout.write(f"    Rate:        {indicators['current_rate']:.4f}")
-        self.stdout.write(f"    MA 30:       {indicators['ma30']:.4f}")
-        self.stdout.write(f"    MA 90:       {indicators['ma90']:.4f}")
-        self.stdout.write(f"    Deviation:   {indicators['deviation']:+.2f}%  ({direction} MA90)")
-        self.stdout.write(
-            f"    Momentum:    {momentum_es}   Volatility: {indicators['volatility']:.4f}"
-        )
-        self.stdout.write(
-            self.style.SUCCESS(f"    Signal: {signal_es}  [confidence {confidence_es}]")
-        )
-        self.stdout.write(
-            f"    Allocation:  ${decision['suggested_amount']:.0f}  "
-            f"({decision['allocation_pct']}% of ${config.monthly_budget:.0f} budget)"
-        )
+        self._print_indicators(pair, indicators, decision, config)
 
         if not no_alerts:
             triggered = check_and_send(indicators, decision, config, pair_name=pair.name)
