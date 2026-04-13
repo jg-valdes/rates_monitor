@@ -121,8 +121,9 @@ CRONTAB_DJANGO_MANAGE_PATH = str(BASE_DIR / "manage.py")
 CRONTAB_LOCK_JOBS = True  # prevents concurrent runs of the same job
 
 CRONJOBS = [
-    # Every hour — fetch last 3 days for all pairs, evaluate alerts
-    ("0 * * * *", "rates.cron.fetch_rates_hourly"),
+    # Twice a day (server local time) — refresh all pairs and send the all-pairs Telegram snapshot
+    ("0 7 * * *", "rates.cron.fetch_rates_and_send_all_alerts"),
+    ("30 12 * * *", "rates.cron.fetch_rates_and_send_all_alerts"),
     # Every day at 02:00 UTC — 90-day backfill, no alerts (safety net)
     ("0 2 * * *", "rates.cron.fetch_rates_daily_backfill"),
 ]

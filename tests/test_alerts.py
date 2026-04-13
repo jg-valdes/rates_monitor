@@ -1,10 +1,18 @@
 """Tests for rates/services/alerts.py."""
+import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 
-from rates.services.alerts import _build_message, _send_telegram, check_and_send, send_test_alert
+from rates.services.alerts import (
+    _build_message,
+    _send_telegram,
+    check_and_send,
+    send_all_current_alerts,
+    send_test_alert,
+)
+from tests.factories import CurrencyPairFactory, ExchangeRateFactory, PairConfigFactory
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -211,3 +219,49 @@ class TestSendTestAlert:
         settings.TELEGRAM_CHAT_ID = ""
         result = send_test_alert(_indicators(), _decision(), _config(), "USD-BRL")
         assert result is False
+
+
+@pytest.mark.django_db
+class TestSendAllCurrentAlerts:
+    def _make_pair_with_rates(self, code="USD-BRL", n=90):
+        pair = CurrencyPairFactory(code=code, name=f"{code} name")
+        base = datetime.date(2024, 1, 1)
+        for i in range(n):
+            ExchangeRateFactory(
+                pair=pair,
+                date=base + datetime.timedelta(days=i),
+                rate=5.0 + i * 0.01,
+            )
+        PairConfigFactory(pair=pair)
+        return pair
+
+    def test_returns_zero_when_no_active_pairs(self):
+        result = send_all_current_alerts()
+        assert result == {"sent": 0, "failed": 0, "total": 0}
+
+    def test_sends_all_pairs(self):
+        self._make_pair_with_rates("USD-BRL")
+        self._make_pair_with_rates("UYU-USD")
+        with patch("rates.services.alerts.send_test_alert", return_value=True) as mock_send:
+            result = send_all_current_alerts()
+        assert result == {"sent": 2, "failed": 0, "total": 2}
+        assert mock_send.call_count == 2
+
+    def test_counts_missing_data_as_failed(self):
+        CurrencyPairFactory(code="USD-BRL")
+        with patch("rates.services.alerts.send_test_alert", return_value=True) as mock_send:
+            result = send_all_current_alerts()
+        assert result == {"sent": 0, "failed": 1, "total": 1}
+        assert mock_send.call_count == 0
+
+    def test_counts_false_result_as_failed(self):
+        self._make_pair_with_rates("USD-BRL")
+        with patch("rates.services.alerts.send_test_alert", return_value=False):
+            result = send_all_current_alerts()
+        assert result == {"sent": 0, "failed": 1, "total": 1}
+
+    def test_counts_exceptions_as_failed(self):
+        self._make_pair_with_rates("USD-BRL")
+        with patch("rates.services.alerts.send_test_alert", side_effect=Exception("network")):
+            result = send_all_current_alerts()
+        assert result == {"sent": 0, "failed": 1, "total": 1}

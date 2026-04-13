@@ -213,8 +213,7 @@ Configure the conditions in each pair's configuration panel:
 - **Alert if deviation >:** fires when deviation vs MA90 exceeds that percentage
 - **Alert if rate >:** fires when the current rate exceeds that value
 
-These fire automatically every hour when `fetch_rates` runs (unless `--no-alerts`
-is passed).
+These fire automatically when `fetch_rates` runs without `--no-alerts`.
 
 #### Manual send
 
@@ -244,13 +243,15 @@ Each Telegram message contains:
 
 ## Daily automation
 
-To keep data up to date without manual intervention, configure a cron job:
+To keep data up to date without manual intervention, configure cron jobs like this:
 
 ```bash
-# Update all pairs every hour (weekdays)
-0 * * * 1-5 cd /path/to/project && uv run manage.py fetch_rates --days 3
+# Refresh all pairs and send the same Telegram snapshot as the "📤 Enviar" button
+0 7 * * * cd /path/to/project && uv run manage.py fetch_rates --days 3 --no-alerts
+30 12 * * * cd /path/to/project && uv run manage.py fetch_rates --days 3 --no-alerts
 ```
 
+In Docker deployment this schedule is already configured through `django-crontab`.
 The `--days 3` option fetches the last 3 days, ensuring no rate is missed due
 to timezone differences.
 

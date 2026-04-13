@@ -331,7 +331,7 @@ class TestSendAllAlerts:
         from rates.models import CurrencyPair
 
         CurrencyPair.objects.all().update(active=False)
-        with patch("rates.views.send_test_alert", return_value=True):
+        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 0, "total": 0}):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "0 alertas" in resp.content.decode()
@@ -343,7 +343,7 @@ class TestSendAllAlerts:
         CurrencyPair.objects.all().update(active=False)
         _make_pair_with_rates("TST-AA")
         _make_pair_with_rates("TST-BB")
-        with patch("rates.views.send_test_alert", return_value=True):
+        with patch("rates.views.send_all_current_alerts", return_value={"sent": 2, "failed": 0, "total": 2}):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✓" in resp.content.decode()
@@ -351,7 +351,7 @@ class TestSendAllAlerts:
 
     def test_all_failed_returns_error(self, client):
         _make_pair_with_rates("USD-BRL")
-        with patch("rates.views.send_test_alert", return_value=False):
+        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 1, "total": 1}):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✕" in resp.content.decode()
@@ -359,15 +359,14 @@ class TestSendAllAlerts:
     def test_partial_failure_returns_warning(self, client):
         _make_pair_with_rates("USD-BRL")
         _make_pair_with_rates("UYU-USD")
-        # First call succeeds, second fails
-        with patch("rates.views.send_test_alert", side_effect=[True, False]):
+        with patch("rates.views.send_all_current_alerts", return_value={"sent": 1, "failed": 1, "total": 2}):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "⚠" in resp.content.decode()
 
     def test_pair_without_data_counted_as_failed(self, client):
         CurrencyPairFactory(code="USD-BRL")  # no rates
-        with patch("rates.views.send_test_alert", return_value=True):
+        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 1, "total": 1}):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✕" in resp.content.decode()
@@ -378,7 +377,7 @@ class TestSendAllAlerts:
 
     def test_exception_per_pair_counted_as_failed(self, client):
         _make_pair_with_rates("USD-BRL")
-        with patch("rates.views.send_test_alert", side_effect=Exception("network")):
+        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 1, "total": 1}):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✕" in resp.content.decode()

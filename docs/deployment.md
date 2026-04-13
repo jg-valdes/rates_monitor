@@ -37,7 +37,8 @@ container as gunicorn.
 
 ```python
 CRONJOBS = [
-    ("0 * * * *",  "rates.cron.fetch_rates_hourly"),         # every hour
+    ("0 7 * * *",  "rates.cron.fetch_rates_and_send_all_alerts"),
+    ("30 12 * * *", "rates.cron.fetch_rates_and_send_all_alerts"),
     ("0 2 * * *",  "rates.cron.fetch_rates_daily_backfill"), # 02:00 UTC daily
 ]
 ```
@@ -46,7 +47,7 @@ CRONJOBS = [
 
 | Task | Schedule | Equivalent command |
 |---|---|---|
-| `fetch_rates_hourly` | Every hour | `manage.py fetch_rates --days 3` (with alerts) |
+| `fetch_rates_and_send_all_alerts` | 07:00 and 12:30 | `manage.py fetch_rates --days 3 --no-alerts` + Telegram snapshot for all active pairs |
 | `fetch_rates_daily_backfill` | 02:00 UTC | `manage.py fetch_rates --days 90 --no-alerts` |
 
 The container entrypoint (`deploy/entrypoint.sh`) runs on startup:
