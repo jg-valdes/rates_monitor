@@ -3,6 +3,9 @@ import logging
 import requests
 from django.conf import settings
 
+from rates.models import CurrencyPair, ExchangeRate, PairConfig
+from rates.services.decision import build_decision
+from rates.services.indicators import compute_all
 from rates.translations import CONFIDENCE_LABELS, MOMENTUM_LABELS, SIGNAL_LABELS
 
 logger = logging.getLogger(__name__)
@@ -129,3 +132,36 @@ def send_test_alert(indicators: dict, decision: dict, config, pair_name: str) ->
     """
     message = _build_message(indicators, decision, pair_name)
     return _send_telegram(message)
+
+
+def send_all_current_alerts() -> dict[str, int]:
+    """
+    Send the current Telegram snapshot for every active pair.
+    Returns summary counters for sent and failed messages.
+    """
+    pairs = list(CurrencyPair.objects.filter(active=True))
+    sent = 0
+    failed = 0
+
+    for pair in pairs:
+        config, _ = PairConfig.objects.get_or_create(pair=pair)
+        rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
+        indicators = compute_all(rates_list)
+        if not indicators:
+            failed += 1
+            continue
+
+        decision = build_decision(indicators, config)
+        try:
+            ok = send_test_alert(indicators, decision, config, pair_name=pair.name)
+        except Exception:
+            logger.warning("send_all_current_alerts failed for %s", pair.code, exc_info=True)
+            failed += 1
+            continue
+
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+
+    return {"sent": sent, "failed": failed, "total": len(pairs)}

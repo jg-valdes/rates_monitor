@@ -32,7 +32,8 @@ cd /opt/rates-monitor
 bash deploy/deploy.sh --setup
 ```
 
-The cron scheduler updates rates **every hour** without manual intervention.
+The cron scheduler refreshes all pairs and sends the Telegram snapshot
+automatically at **07:00** and **12:30** server time.
 A ready-to-use Caddyfile template is provided at `deploy/Caddyfile`.
 
 → Full guide: [docs/deployment.md](docs/deployment.md)
