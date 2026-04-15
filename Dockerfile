@@ -1,11 +1,7 @@
 FROM python:3.14-slim
 
-# Install uv (fast Python package manager) and system cron daemon
+# Install uv (fast Python package manager)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends cron && \
-    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
