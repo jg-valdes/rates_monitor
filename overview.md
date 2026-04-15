@@ -256,8 +256,8 @@ bash deploy/deploy.sh --setup
 git pull && bash deploy/deploy.sh
 ```
 
-The `cron` service updates rates every hour without manual intervention
-(full 90-day backfill at 02:00 UTC daily).
+The `cron` service refreshes all pairs and sends the Telegram snapshot at
+07:00 and 12:30 server time (full 90-day backfill at 02:00 daily).
 
 → Full guide: [docs/deployment.md](docs/deployment.md)
 

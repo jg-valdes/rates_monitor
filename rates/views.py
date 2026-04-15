@@ -10,7 +10,7 @@ from django.views.decorators.http import require_http_methods
 import hmac
 
 from rates.models import CurrencyPair, ExchangeRate, PairConfig, Purchase
-from rates.services.alerts import send_test_alert
+from rates.services.alerts import send_all_current_alerts, send_test_alert
 from rates.services.cross_pair import compute_cross_pair
 from rates.services.decision import build_decision
 from rates.services.fetcher import fetch_and_store
@@ -193,26 +193,9 @@ def update_config(request, pair_code):
 
 @require_http_methods(["POST"])
 def send_all_alerts(request):
-    pairs = list(CurrencyPair.objects.filter(active=True))
-    sent = 0
-    failed = 0
-    for pair in pairs:
-        config = _get_or_create_config(pair)
-        rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
-        indicators = compute_all(rates_list)
-        if not indicators:
-            failed += 1
-            continue
-        decision = build_decision(indicators, config)
-        try:
-            ok = send_test_alert(indicators, decision, config, pair_name=pair.name)
-            if ok:
-                sent += 1
-            else:
-                failed += 1
-        except Exception:
-            logger.warning("send_all_alerts failed for %s", pair.code, exc_info=True)
-            failed += 1
+    result = send_all_current_alerts()
+    sent = result["sent"]
+    failed = result["failed"]
     if failed == 0:
         return HttpResponse(
             f'<span class="text-emerald-400 text-xs">✓ {sent} alertas enviadas</span>'

@@ -24,25 +24,29 @@ def _is_runserver():
 def _start_scheduler():
     from apscheduler.schedulers.background import BackgroundScheduler
     from apscheduler.triggers.cron import CronTrigger
-    from django.core.management import call_command
 
-    def fetch_hourly():
-        logger.info("scheduler: fetch_hourly start")
-        call_command("fetch_rates", days=3)
-        logger.info("scheduler: fetch_hourly done")
-
-    def fetch_daily_backfill():
-        logger.info("scheduler: fetch_daily_backfill start")
-        call_command("fetch_rates", days=90, no_alerts=True)
-        logger.info("scheduler: fetch_daily_backfill done")
+    from rates.cron import fetch_rates_and_send_all_alerts, fetch_rates_daily_backfill
 
     scheduler = BackgroundScheduler(timezone="UTC")
-    scheduler.add_job(fetch_hourly, CronTrigger(minute=0), id="fetch_hourly", max_instances=1)
+    # Twice daily: 07:00 and 12:30 — fetch rates and send Telegram snapshot
     scheduler.add_job(
-        fetch_daily_backfill,
+        fetch_rates_and_send_all_alerts,
+        CronTrigger(hour=7, minute=0),
+        id="fetch_and_alert_morning",
+        max_instances=1,
+    )
+    scheduler.add_job(
+        fetch_rates_and_send_all_alerts,
+        CronTrigger(hour=12, minute=30),
+        id="fetch_and_alert_midday",
+        max_instances=1,
+    )
+    # Daily at 02:00 UTC — 90-day backfill, no alerts (safety net)
+    scheduler.add_job(
+        fetch_rates_daily_backfill,
         CronTrigger(hour=2, minute=0),
         id="fetch_daily_backfill",
         max_instances=1,
     )
     scheduler.start()
-    logger.info("scheduler: started (fetch_hourly @ *:00, fetch_daily_backfill @ 02:00 UTC)")
+    logger.info("scheduler: started (07:00, 12:30, 02:00 UTC)")
