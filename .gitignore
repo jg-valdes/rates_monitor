@@ -12,3 +12,5 @@ dist/
 staticfiles/
 data
 deploy/deploy.sh
+.coverage
+.codex

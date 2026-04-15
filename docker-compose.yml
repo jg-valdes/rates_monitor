@@ -1,6 +1,6 @@
 services:
 
-  # ── Django app — gunicorn + django-crontab (single container) ───────────────
+  # ── Django app — gunicorn + APScheduler background thread ───────────────────
   web:
     build: .
     image: rates_app:web
@@ -16,6 +16,7 @@ services:
       # internet. A reverse proxy (e.g. Caddy) running on the host reaches
       # the app at localhost:8003.
       - "8003:8000"
+
 
 volumes:
   data:   # persistent SQLite database

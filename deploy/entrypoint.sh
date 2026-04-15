@@ -3,9 +3,11 @@
 #
 # Order:
 #   1. Apply pending migrations (idempotent, safe on restart)
-#   2. Register cron jobs with the system crontab via django-crontab
-#   3. Start the system cron daemon in the background
-#   4. Hand off to gunicorn (PID 1)
+#   2. Create superuser if DJANGO_SUPERUSER_USERNAME is set (skips if already exists)
+#   3. Hand off to gunicorn (PID 1)
+#
+# Scheduled jobs (fetch_rates) are handled by the APScheduler background
+# thread that starts inside gunicorn via RatesConfig.ready().
 
 set -e
 
@@ -15,19 +17,13 @@ log() { echo "[entrypoint] $*"; }
 log "Running migrations..."
 uv run manage.py migrate --noinput
 
-# 2. Register jobs — django-crontab writes to the user's crontab.
-#    Running this on every start is safe: it replaces the existing entries.
-log "Installing cron jobs..."
-uv run manage.py crontab add
+# 2. Superuser (only runs when the env var is set; safe to re-run — skips if exists)
+if [ -n "$DJANGO_SUPERUSER_USERNAME" ]; then
+    log "Creating superuser '$DJANGO_SUPERUSER_USERNAME' (no-op if already exists)..."
+    uv run manage.py createsuperuser --noinput 2>&1 | grep -v "already exists" || true
+fi
 
-log "Registered jobs:"
-uv run manage.py crontab show
-
-# 3. Start cron daemon (Debian's cron daemonises itself, freeing the shell)
-log "Starting cron daemon..."
-cron
-
-# 4. Start gunicorn as PID 1 so Docker signals are handled correctly
+# 3. Start gunicorn as PID 1 so Docker signals are handled correctly
 log "Starting gunicorn..."
 exec uv run gunicorn config.wsgi:application \
     --bind 0.0.0.0:8000 \
