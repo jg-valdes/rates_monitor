@@ -36,6 +36,7 @@ class ExchangeRate(models.Model):
     rate = models.FloatField()
     high = models.FloatField(null=True, blank=True)
     low = models.FloatField(null=True, blank=True)
+    is_synthetic = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -44,6 +45,22 @@ class ExchangeRate(models.Model):
 
     def __str__(self):
         return f"{self.pair.code} {self.date}: {self.rate:.4f}"
+
+
+class SourceQuotaUsage(models.Model):
+    source = models.CharField(max_length=40)
+    year = models.PositiveSmallIntegerField()
+    month = models.PositiveSmallIntegerField()
+    request_count = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [["source", "year", "month"]]
+        verbose_name = "Uso de Cuota por Fuente"
+        verbose_name_plural = "Uso de Cuota por Fuente"
+
+    def __str__(self):
+        return f"{self.source} {self.year:04d}-{self.month:02d}: {self.request_count}"
 
 
 class Purchase(models.Model):

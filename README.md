@@ -90,6 +90,10 @@ DATA_DIR=                      # database directory (Docker sets this automatica
 EXCHANGE_RATE_SOURCE=awesomeapi          # default — free, no key needed
 # EXCHANGE_RATE_SOURCE=openexchangerates # alternative — requires app ID below
 # OPENEXCHANGERATES_APP_ID=…            # from openexchangerates.org (free or paid)
+# OER_MONTHLY_REQUEST_QUOTA=1000        # free-plan monthly quota
+# OER_TARGET_USAGE_RATIO=0.95           # stay under 95% of monthly quota
+# OER_MIN_REQUEST_INTERVAL_MINUTES=240  # block repeated manual refresh spam
+# OER_ALLOW_HISTORICAL=False            # keep False on the free plan
 ```
 
 ---

@@ -6,6 +6,8 @@ import requests
 from rates.services.oer_fetcher import OERError
 from rates.services.oer_usage import fetch_usage_summary
 
+pytestmark = pytest.mark.django_db
+
 
 @pytest.fixture(autouse=True)
 def _oer_app_id(settings):

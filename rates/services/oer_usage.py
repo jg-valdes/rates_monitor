@@ -4,6 +4,7 @@ import requests
 from django.conf import settings
 
 from rates.services.oer_fetcher import BASE_URL, OERError
+from rates.services.oer_quota import get_quota_status
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ def fetch_usage_summary() -> dict:
     quota = usage.get("requests_quota") or 0
     requests_used = usage.get("requests") or 0
     usage_pct = round((requests_used / quota) * 100, 2) if quota else 0.0
+    local_quota = get_quota_status()
 
     return {
         "app_id": payload.get("app_id", ""),
@@ -47,4 +49,8 @@ def fetch_usage_summary() -> dict:
         "days_remaining": usage.get("days_remaining") or 0,
         "daily_average": usage.get("daily_average") or 0,
         "usage_pct": min(usage_pct, 100.0),
+        "local_requests_used": local_quota["used"],
+        "local_target_quota": local_quota["target_quota"],
+        "local_remaining_target": local_quota["remaining_target"],
+        "local_suggested_daily_budget": local_quota["suggested_daily_budget"],
     }

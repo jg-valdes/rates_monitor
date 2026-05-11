@@ -5,12 +5,12 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from rates.models import CurrencyPair, ExchangeRate, PairConfig
+from rates.services import oer_fetcher
 from rates.services.alerts import check_and_send
 from rates.services.cross_pair import compute_cross_pair
 from rates.services.decision import build_decision
 from rates.services.fetcher import fetch_and_store
 from rates.services.indicators import compute_all
-from rates.services import oer_fetcher
 from rates.translations import CONFIDENCE_LABELS, MOMENTUM_LABELS, SIGNAL_LABELS
 
 logger = logging.getLogger(__name__)

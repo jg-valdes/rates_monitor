@@ -1,8 +1,8 @@
 """Tests for rates/middleware.py — PasscodeMiddleware."""
 import pytest
 from django.core import signing
-from django.test import Client, RequestFactory
 from django.http import HttpResponse
+from django.test import RequestFactory
 
 from rates.middleware import PasscodeMiddleware
 

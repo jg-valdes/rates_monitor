@@ -1,5 +1,5 @@
 """Tests for rates/templatetags/rates_extras.py."""
-import pytest
+
 from rates.templatetags.rates_extras import confidence_label, momentum_label, signal_label
 
 

@@ -16,6 +16,7 @@ from rates.services.cross_pair import compute_cross_pair
 from rates.services.decision import build_decision
 from rates.services.fetcher import fetch_and_store
 from rates.services.indicators import compute_all, compute_rolling_ma
+from rates.services.market_calendar import mirror_missing_weekend_rates
 from rates.services.oer_usage import fetch_usage_summary
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ def logout_view(request):
 
 def overview(request):
     pairs = list(CurrencyPair.objects.filter(active=True))
+    mirror_missing_weekend_rates(pairs)
     pair_ids = [p.id for p in pairs]
 
     # One query for all rates, pre-grouped by pair
@@ -112,6 +114,7 @@ def overview(request):
 
 def dashboard(request, pair_code):
     pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    mirror_missing_weekend_rates([pair])
     config = _get_or_create_config(pair)
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
     ctx = _build_context(pair, rates_list, config)
@@ -123,6 +126,7 @@ def dashboard(request, pair_code):
 @require_http_methods(["GET"])
 def stats_partial(request, pair_code):
     pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    mirror_missing_weekend_rates([pair])
     config = _get_or_create_config(pair)
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
     indicators = compute_all(rates_list)
@@ -141,7 +145,7 @@ def refresh_data(request, pair_code):
     source = getattr(settings, "EXCHANGE_RATE_SOURCE", "awesomeapi")
     try:
         if source == "openexchangerates":
-            oer_fetcher.fetch_and_store(days=3)
+            oer_fetcher.fetch_and_store(days=1, force=True)
         else:
             fetch_and_store(pair, days=3)
     except Exception:
@@ -165,7 +169,7 @@ def update_config(request, pair_code):
     def _float(key, default):
         try:
             return float(p[key])
-        except (KeyError, ValueError, TypeError):
+        except KeyError, ValueError, TypeError:
             return default
 
     def _float_or_none(key):
@@ -235,6 +239,7 @@ def oer_usage_panel(request):
 @require_http_methods(["POST"])
 def test_alert(request, pair_code):
     pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    mirror_missing_weekend_rates([pair])
     config = _get_or_create_config(pair)
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
     indicators = compute_all(rates_list)
@@ -275,7 +280,7 @@ def add_purchase(request, pair_code):
             amount_received=float(request.POST["amount_received"]),
             note=request.POST.get("note", "").strip(),
         )
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         pass
     return render(
         request,

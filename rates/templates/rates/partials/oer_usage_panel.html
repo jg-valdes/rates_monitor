@@ -31,7 +31,6 @@
       <p class="text-sm text-gray-400 mt-1">
         {{ usage.quota_label }} • actualización {{ usage.update_frequency }}
       </p>
-      <p class="text-xs text-gray-600 mt-1 font-mono">app_id {{ usage.app_id }}</p>
     </div>
 
     <div class="min-w-0 lg:w-80">
@@ -72,6 +71,25 @@
     <div class="bg-gray-950/60 rounded-xl p-3">
       <p class="text-gray-500 text-xs uppercase tracking-widest">Promedio diario</p>
       <p class="text-gray-100 font-mono mt-1">{{ usage.daily_average }}</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4 text-sm">
+    <div class="bg-gray-950/60 rounded-xl p-3">
+      <p class="text-gray-500 text-xs uppercase tracking-widest">Uso local</p>
+      <p class="text-gray-100 font-mono mt-1">{{ usage.local_requests_used }}</p>
+    </div>
+    <div class="bg-gray-950/60 rounded-xl p-3">
+      <p class="text-gray-500 text-xs uppercase tracking-widest">Cap objetivo</p>
+      <p class="text-gray-100 font-mono mt-1">{{ usage.local_target_quota }}</p>
+    </div>
+    <div class="bg-gray-950/60 rounded-xl p-3">
+      <p class="text-gray-500 text-xs uppercase tracking-widest">Margen local</p>
+      <p class="text-gray-100 font-mono mt-1">{{ usage.local_remaining_target }}</p>
+    </div>
+    <div class="bg-gray-950/60 rounded-xl p-3">
+      <p class="text-gray-500 text-xs uppercase tracking-widest">Sugerido / día</p>
+      <p class="text-gray-100 font-mono mt-1">{{ usage.local_suggested_daily_budget }}</p>
     </div>
   </div>
 

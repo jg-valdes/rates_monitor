@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
+from rates.models import ExchangeRate
 from rates.services.fetcher import AwesomeApiError, _fetch_daily, fetch_and_store
 from tests.factories import CurrencyPairFactory, ExchangeRateFactory
 
@@ -86,8 +87,6 @@ class TestFetchAndStore:
         assert updated == 1
 
     def test_falls_back_to_timestamp_when_no_create_date(self):
-        from rates.models import ExchangeRate
-
         pair = CurrencyPairFactory(code="USD-BRL", api_code="USD-BRL")
         # Use a known timestamp: 2024-01-15 UTC
         ts = str(int(datetime.datetime(2024, 1, 15, tzinfo=datetime.timezone.utc).timestamp()))
@@ -98,8 +97,6 @@ class TestFetchAndStore:
         assert ExchangeRate.objects.filter(pair=pair).count() == 1
 
     def test_skips_malformed_record(self):
-        from rates.models import ExchangeRate
-
         pair = CurrencyPairFactory(code="USD-BRL", api_code="USD-BRL")
         data = [{"bid": "not-a-float", "create_date": "2024-06-01 12:00:00"}]
         with patch("rates.services.fetcher._fetch_daily", return_value=data):
@@ -108,8 +105,6 @@ class TestFetchAndStore:
         assert ExchangeRate.objects.filter(pair=pair).count() == 0
 
     def test_stores_high_and_low(self):
-        from rates.models import ExchangeRate
-
         pair = CurrencyPairFactory(code="USD-BRL", api_code="USD-BRL")
         data = [_record(bid="5.0", high="5.3", low="4.8", create_date="2024-06-01 12:00:00")]
         with patch("rates.services.fetcher._fetch_daily", return_value=data):
@@ -119,8 +114,6 @@ class TestFetchAndStore:
         assert rate.low == pytest.approx(4.8)
 
     def test_stores_none_for_missing_high_low(self):
-        from rates.models import ExchangeRate
-
         pair = CurrencyPairFactory(code="USD-BRL", api_code="USD-BRL")
         data = [{"bid": "5.0", "high": "", "low": "", "create_date": "2024-06-01 12:00:00"}]
         with patch("rates.services.fetcher._fetch_daily", return_value=data):
@@ -130,8 +123,6 @@ class TestFetchAndStore:
         assert rate.low is None
 
     def test_is_idempotent(self):
-        from rates.models import ExchangeRate
-
         pair = CurrencyPairFactory(code="USD-BRL", api_code="USD-BRL")
         data = [_record(create_date="2024-06-01 12:00:00")]
         with patch("rates.services.fetcher._fetch_daily", return_value=data):

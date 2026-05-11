@@ -3,6 +3,7 @@ import datetime
 
 import pytest
 
+from rates.models import CurrencyPair
 from rates.services.cross_pair import compute_cross_pair
 from tests.factories import CurrencyPairFactory, ExchangeRateFactory
 
@@ -26,8 +27,6 @@ class TestComputeCrossPair:
 
     def test_returns_none_when_pair_inactive(self):
         # The seed migration creates UYU-BRL as active; deactivate it directly.
-        from rates.models import CurrencyPair
-
         pair = CurrencyPair.objects.get(code="UYU-BRL")
         pair.active = False
         pair.save()

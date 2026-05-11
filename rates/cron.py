@@ -6,6 +6,7 @@ so django-crontab can reference them by dotted path.
 
 import logging
 
+from django.conf import settings
 from django.core.management import call_command
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,21 @@ def fetch_rates_hourly():
 def fetch_rates_daily_backfill():
     """Run once a day: 90-day backfill without alerts (safety net for missed days)."""
     logger.info("cron: fetch_rates_daily_backfill start")
+    if getattr(
+        settings, "EXCHANGE_RATE_SOURCE", "awesomeapi"
+    ) == "openexchangerates" and not getattr(settings, "OER_ALLOW_HISTORICAL", False):
+        from rates.models import CurrencyPair
+        from rates.services.market_calendar import mirror_missing_weekend_rates
+
+        pairs = CurrencyPair.objects.filter(active=True)
+        created, updated = mirror_missing_weekend_rates(pairs)
+        logger.info(
+            "cron: fetch_rates_daily_backfill skipped remote OER backfill; mirrored weekend rows "
+            "(created=%s updated=%s)",
+            created,
+            updated,
+        )
+        return
     call_command("fetch_rates", days=90, no_alerts=True)
     logger.info("cron: fetch_rates_daily_backfill done")
 
