@@ -3,7 +3,6 @@ import datetime
 from unittest.mock import patch
 
 import pytest
-from django.test import Client
 from django.urls import reverse
 
 from tests.factories import (
@@ -12,7 +11,6 @@ from tests.factories import (
     PairConfigFactory,
     PurchaseFactory,
 )
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -95,8 +93,6 @@ class TestOverviewView:
         assert resp.status_code == 200
 
     def test_overview_with_purchases_shows_totals(self, client):
-        from rates.models import PairConfig
-
         pair = _make_pair_with_rates("USD-BRL")
         PurchaseFactory(pair=pair, amount_spent=100.0, amount_received=550.0)
         resp = client.get(reverse("rates:overview"))
@@ -252,7 +248,9 @@ class TestUpdateConfig:
         PairConfig.objects.filter(pair=pair).update(monthly_budget=1000.0)
         self._post(client, pair, {
             "monthly_budget": "not-a-number",
-            "threshold_strong_buy": "3", "threshold_moderate_buy": "1.5", "threshold_do_not_buy": "-1",
+            "threshold_strong_buy": "3",
+            "threshold_moderate_buy": "1.5",
+            "threshold_do_not_buy": "-1",
         })
         assert PairConfig.objects.get(pair=pair).monthly_budget == pytest.approx(1000.0)
 
@@ -331,7 +329,10 @@ class TestSendAllAlerts:
         from rates.models import CurrencyPair
 
         CurrencyPair.objects.all().update(active=False)
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 0, "total": 0}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 0, "failed": 0, "total": 0},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "0 alertas" in resp.content.decode()
@@ -343,7 +344,10 @@ class TestSendAllAlerts:
         CurrencyPair.objects.all().update(active=False)
         _make_pair_with_rates("TST-AA")
         _make_pair_with_rates("TST-BB")
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 2, "failed": 0, "total": 2}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 2, "failed": 0, "total": 2},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✓" in resp.content.decode()
@@ -351,7 +355,10 @@ class TestSendAllAlerts:
 
     def test_all_failed_returns_error(self, client):
         _make_pair_with_rates("USD-BRL")
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 1, "total": 1}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 0, "failed": 1, "total": 1},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✕" in resp.content.decode()
@@ -359,14 +366,20 @@ class TestSendAllAlerts:
     def test_partial_failure_returns_warning(self, client):
         _make_pair_with_rates("USD-BRL")
         _make_pair_with_rates("UYU-USD")
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 1, "failed": 1, "total": 2}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 1, "failed": 1, "total": 2},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "⚠" in resp.content.decode()
 
     def test_pair_without_data_counted_as_failed(self, client):
         CurrencyPairFactory(code="USD-BRL")  # no rates
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 1, "total": 1}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 0, "failed": 1, "total": 1},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✕" in resp.content.decode()
@@ -377,10 +390,54 @@ class TestSendAllAlerts:
 
     def test_exception_per_pair_counted_as_failed(self, client):
         _make_pair_with_rates("USD-BRL")
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 1, "total": 1}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 0, "failed": 1, "total": 1},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✕" in resp.content.decode()
+
+
+# ── OER usage panel ───────────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestOERUsagePanel:
+    def test_only_get_allowed(self, client):
+        resp = client.post(reverse("rates:oer_usage_panel"))
+        assert resp.status_code == 405
+
+    def test_renders_usage_panel(self, client):
+        with patch(
+            "rates.views.fetch_usage_summary",
+            return_value={
+                "app_id": "test-key-123",
+                "status": "active",
+                "plan_name": "Enterprise",
+                "quota_label": "100,000 requests/month",
+                "update_frequency": "30-minute",
+                "features": {"base": True, "convert": False},
+                "requests_used": 54524,
+                "requests_quota": 100000,
+                "requests_remaining": 45476,
+                "days_elapsed": 16,
+                "days_remaining": 14,
+                "daily_average": 2842,
+                "usage_pct": 54.52,
+            },
+        ):
+            resp = client.get(reverse("rates:oer_usage_panel"))
+
+        assert resp.status_code == 200
+        assert "Enterprise" in resp.content.decode()
+        assert "54.52%" in resp.content.decode()
+
+    def test_renders_error_state(self, client):
+        with patch("rates.views.fetch_usage_summary", side_effect=Exception("boom")):
+            resp = client.get(reverse("rates:oer_usage_panel"))
+
+        assert resp.status_code == 200
+        assert "boom" in resp.content.decode()
 
 
 # ── Purchases ─────────────────────────────────────────────────────────────────

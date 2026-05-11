@@ -1,0 +1,88 @@
+{% if error %}
+<div class="bg-gray-900 border border-amber-800 rounded-2xl p-4 mb-6">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <p class="text-xs text-amber-400 uppercase tracking-widest">Open Exchange Rates</p>
+      <p class="text-sm text-gray-300 mt-1">{{ error }}</p>
+    </div>
+    <button
+      class="text-xs text-gray-400 hover:text-white transition-colors"
+      hx-get="{% url 'rates:oer_usage_panel' %}"
+      hx-target="#oer-usage-panel"
+      hx-swap="innerHTML"
+    >
+      Reintentar
+    </button>
+  </div>
+</div>
+{% else %}
+<div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div>
+      <p class="text-xs text-gray-500 uppercase tracking-widest">Open Exchange Rates</p>
+      <div class="mt-2 flex items-center gap-3">
+        <h2 class="text-lg font-semibold text-white">{{ usage.plan_name }}</h2>
+        <span class="px-2 py-0.5 rounded-full text-xs font-bold
+          {% if usage.status == 'active' %}bg-emerald-500/20 text-emerald-300 border border-emerald-800
+          {% else %}bg-amber-500/20 text-amber-300 border border-amber-800{% endif %}">
+          {{ usage.status|upper }}
+        </span>
+      </div>
+      <p class="text-sm text-gray-400 mt-1">
+        {{ usage.quota_label }} • actualización {{ usage.update_frequency }}
+      </p>
+      <p class="text-xs text-gray-600 mt-1 font-mono">app_id {{ usage.app_id }}</p>
+    </div>
+
+    <div class="min-w-0 lg:w-80">
+      <div class="flex items-center justify-between text-sm text-gray-400 mb-1">
+        <span>Consumo mensual</span>
+        <span class="font-mono text-gray-200">{{ usage.usage_pct|floatformat:2 }}%</span>
+      </div>
+      <div class="bg-black/30 rounded-full h-2.5">
+        <div class="h-2.5 rounded-full bg-indigo-500 transition-all duration-500"
+             style="width: {{ usage.usage_pct }}%;"></div>
+      </div>
+      <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <div class="bg-gray-950/60 rounded-xl p-3">
+          <p class="text-gray-500 text-xs uppercase tracking-widest">Usadas</p>
+          <p class="text-white font-mono text-lg mt-1">{{ usage.requests_used }}</p>
+        </div>
+        <div class="bg-gray-950/60 rounded-xl p-3">
+          <p class="text-gray-500 text-xs uppercase tracking-widest">Restantes</p>
+          <p class="text-white font-mono text-lg mt-1">{{ usage.requests_remaining }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4 text-sm">
+    <div class="bg-gray-950/60 rounded-xl p-3">
+      <p class="text-gray-500 text-xs uppercase tracking-widest">Cuota</p>
+      <p class="text-gray-100 font-mono mt-1">{{ usage.requests_quota }}</p>
+    </div>
+    <div class="bg-gray-950/60 rounded-xl p-3">
+      <p class="text-gray-500 text-xs uppercase tracking-widest">Días usados</p>
+      <p class="text-gray-100 font-mono mt-1">{{ usage.days_elapsed }}</p>
+    </div>
+    <div class="bg-gray-950/60 rounded-xl p-3">
+      <p class="text-gray-500 text-xs uppercase tracking-widest">Días restantes</p>
+      <p class="text-gray-100 font-mono mt-1">{{ usage.days_remaining }}</p>
+    </div>
+    <div class="bg-gray-950/60 rounded-xl p-3">
+      <p class="text-gray-500 text-xs uppercase tracking-widest">Promedio diario</p>
+      <p class="text-gray-100 font-mono mt-1">{{ usage.daily_average }}</p>
+    </div>
+  </div>
+
+  <div class="mt-4 flex flex-wrap gap-2">
+    {% for feature_name, enabled in usage.features.items %}
+    <span class="px-2.5 py-1 rounded-full text-xs border
+      {% if enabled %}bg-emerald-500/10 text-emerald-300 border-emerald-900
+      {% else %}bg-gray-800 text-gray-500 border-gray-700{% endif %}">
+      {{ feature_name }}: {% if enabled %}on{% else %}off{% endif %}
+    </span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}

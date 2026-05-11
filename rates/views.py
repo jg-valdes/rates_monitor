@@ -1,3 +1,4 @@
+import hmac
 import json
 import logging
 
@@ -7,15 +8,15 @@ from django.db.models import Count, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
-import hmac
 
 from rates.models import CurrencyPair, ExchangeRate, PairConfig, Purchase
+from rates.services import oer_fetcher
 from rates.services.alerts import send_all_current_alerts, send_test_alert
 from rates.services.cross_pair import compute_cross_pair
 from rates.services.decision import build_decision
 from rates.services.fetcher import fetch_and_store
-from rates.services import oer_fetcher
 from rates.services.indicators import compute_all, compute_rolling_ma
+from rates.services.oer_usage import fetch_usage_summary
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,11 @@ def overview(request):
     for row in (
         Purchase.objects.filter(pair_id__in=pair_ids)
         .values("pair_id")
-        .annotate(total_spent=Sum("amount_spent"), total_received=Sum("amount_received"), count=Count("id"))
+        .annotate(
+            total_spent=Sum("amount_spent"),
+            total_received=Sum("amount_received"),
+            count=Count("id"),
+        )
     ):
         spent = row["total_spent"] or 0.0
         received = row["total_received"] or 0.0
@@ -202,11 +207,26 @@ def send_all_alerts(request):
         )
     if sent == 0:
         return HttpResponse(
-            '<span class="text-red-400 text-xs">✕ Error — revisa TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID</span>'
+            (
+                '<span class="text-red-400 text-xs">'
+                "✕ Error — revisa TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID"
+                "</span>"
+            )
         )
     return HttpResponse(
         f'<span class="text-amber-400 text-xs">⚠ {sent} enviadas, {failed} fallaron</span>'
     )
+
+
+@require_http_methods(["GET"])
+def oer_usage_panel(request):
+    try:
+        usage = fetch_usage_summary()
+        context = {"usage": usage, "error": None}
+    except Exception as exc:
+        logger.warning("oer_usage_panel: fetch failed", exc_info=True)
+        context = {"usage": None, "error": str(exc)}
+    return render(request, "rates/partials/oer_usage_panel.html", context)
 
 
 # ── Test alert ────────────────────────────────────────────────────────────────
@@ -229,9 +249,15 @@ def test_alert(request, pair_code):
         logger.warning("test_alert failed for %s", pair.code, exc_info=True)
         ok = False
     if ok:
-        return HttpResponse('<span class="text-emerald-400 text-xs">✓ Alerta enviada a Telegram</span>')
+        return HttpResponse(
+            '<span class="text-emerald-400 text-xs">✓ Alerta enviada a Telegram</span>'
+        )
     return HttpResponse(
-        '<span class="text-red-400 text-xs">✕ Error — revisa TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID</span>'
+        (
+            '<span class="text-red-400 text-xs">'
+            "✕ Error — revisa TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID"
+            "</span>"
+        )
     )
 
 
