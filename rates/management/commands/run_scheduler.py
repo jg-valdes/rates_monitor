@@ -13,13 +13,13 @@ class Command(BaseCommand):
 
         scheduler.add_job(
             fetch_rates_and_send_all_alerts,
-            CronTrigger(hour=7, minute=0),
+            CronTrigger(hour=7, minute=0, day_of_week="mon-fri"),
             id="fetch_and_alert_morning",
             max_instances=1,
         )
         scheduler.add_job(
             fetch_rates_and_send_all_alerts,
-            CronTrigger(hour=12, minute=30),
+            CronTrigger(hour=12, minute=30, day_of_week="mon-fri"),
             id="fetch_and_alert_midday",
             max_instances=1,
         )
@@ -30,8 +30,8 @@ class Command(BaseCommand):
             max_instances=1,
         )
 
-        self.stdout.write("Scheduler started. Jobs: 07:00, 12:30, 02:00 UTC.")
+        self.stdout.write("Scheduler started. Jobs: weekday 07:00, weekday 12:30, daily 02:00 UTC.")
         try:
             scheduler.start()
-        except (KeyboardInterrupt, SystemExit):
+        except KeyboardInterrupt, SystemExit:
             self.stdout.write("Scheduler stopped.")

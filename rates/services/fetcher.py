@@ -48,7 +48,10 @@ def _fetch_daily(pair_code: str, qty: int) -> list[dict]:
             wait = 2**attempt  # 2 s, then 4 s
             logger.warning(
                 "AwesomeAPI rate limit hit for %s — retrying in %d s (attempt %d/%d)",
-                pair_code, wait, attempt + 1, _MAX_RETRIES,
+                pair_code,
+                wait,
+                attempt + 1,
+                _MAX_RETRIES,
             )
             time.sleep(wait)
 
@@ -67,9 +70,7 @@ def _fetch_daily(pair_code: str, qty: int) -> list[dict]:
 
         return resp.json()
 
-    raise AwesomeApiError(
-        f"Rate limit exceeded for {pair_code} after {_MAX_RETRIES} attempts"
-    )
+    raise AwesomeApiError(f"Rate limit exceeded for {pair_code} after {_MAX_RETRIES} attempts")
 
 
 def fetch_and_store(pair, days: int = 90) -> tuple[int, int]:
@@ -97,13 +98,20 @@ def fetch_and_store(pair, days: int = 90) -> tuple[int, int]:
             high = float(rec["high"]) if rec.get("high") else None
             low = float(rec["low"]) if rec.get("low") else None
         except (KeyError, ValueError) as exc:
-            logger.warning("Skipping malformed record for %s: raw record: %s; Error: %s", pair.code, rec, exc)
+            logger.warning(
+                "Skipping malformed record for %s: raw record: %s; Error: %s", pair.code, rec, exc
+            )
             continue
 
         _, was_created = ExchangeRate.objects.update_or_create(
             pair=pair,
             date=rate_date,
-            defaults={"rate": rate_value, "high": high, "low": low},
+            defaults={
+                "rate": rate_value,
+                "high": high,
+                "low": low,
+                "is_synthetic": False,
+            },
         )
         if was_created:
             created += 1

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from decouple import config, Csv
+from decouple import Csv, config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -33,6 +33,14 @@ ACCESS_PASSCODE = config("ACCESS_PASSCODE", default="")
 EXCHANGE_RATE_SOURCE = config("EXCHANGE_RATE_SOURCE", default="awesomeapi")
 # Required when EXCHANGE_RATE_SOURCE = "openexchangerates"
 OPENEXCHANGERATES_APP_ID = config("OPENEXCHANGERATES_APP_ID", default="")
+OER_MONTHLY_REQUEST_QUOTA = config("OER_MONTHLY_REQUEST_QUOTA", default=1000, cast=int)
+OER_TARGET_USAGE_RATIO = config("OER_TARGET_USAGE_RATIO", default=0.95, cast=float)
+OER_MIN_REQUEST_INTERVAL_MINUTES = config(
+    "OER_MIN_REQUEST_INTERVAL_MINUTES",
+    default=240,
+    cast=int,
+)
+OER_ALLOW_HISTORICAL = config("OER_ALLOW_HISTORICAL", default=False, cast=bool)
 
 # ── Telegram alerts ───────────────────────────────────────────────────────────
 # Both must be set for alerts to be sent. Leave empty to disable.

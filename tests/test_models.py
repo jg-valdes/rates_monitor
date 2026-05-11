@@ -1,8 +1,15 @@
 import datetime
 
 import pytest
+from django.db import IntegrityError
 
-from tests.factories import CurrencyPairFactory, ExchangeRateFactory, PairConfigFactory, PurchaseFactory
+from rates.models import SourceQuotaUsage
+from tests.factories import (
+    CurrencyPairFactory,
+    ExchangeRateFactory,
+    PairConfigFactory,
+    PurchaseFactory,
+)
 
 
 @pytest.mark.django_db
@@ -32,12 +39,14 @@ class TestExchangeRate:
         assert str(rate) == "USD-BRL 2024-03-01: 5.1234"
 
     def test_unique_constraint(self):
-        from django.db import IntegrityError
-
         pair = CurrencyPairFactory(code="UC-TST")
         ExchangeRateFactory(pair=pair, date=datetime.date(2024, 1, 1), rate=5.0)
         with pytest.raises(IntegrityError):
             ExchangeRateFactory(pair=pair, date=datetime.date(2024, 1, 1), rate=5.1)
+
+    def test_defaults_to_non_synthetic(self):
+        rate = ExchangeRateFactory()
+        assert rate.is_synthetic is False
 
 
 @pytest.mark.django_db
@@ -78,3 +87,15 @@ class TestPairConfig:
         assert cfg.alert_on_strong_buy is True
         assert cfg.alert_on_deviation_above is None
         assert cfg.alert_on_rate_above is None
+
+
+@pytest.mark.django_db
+class TestSourceQuotaUsage:
+    def test_str(self):
+        usage = SourceQuotaUsage.objects.create(
+            source="openexchangerates",
+            year=2026,
+            month=5,
+            request_count=12,
+        )
+        assert str(usage) == "openexchangerates 2026-05: 12"

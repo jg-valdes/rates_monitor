@@ -14,6 +14,7 @@ urlpatterns = [
     path("overview/", views.overview, name="overview"),
     # Global actions
     path("send-alerts/", views.send_all_alerts, name="send_all_alerts"),
+    path("oer-usage/", views.oer_usage_panel, name="oer_usage_panel"),
     # Per-pair dashboard and partials (pair_code slug, e.g. "usd-brl")
     path("<str:pair_code>/", views.dashboard, name="dashboard"),
     path("<str:pair_code>/stats/", views.stats_partial, name="stats_partial"),

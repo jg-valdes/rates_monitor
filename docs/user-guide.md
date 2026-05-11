@@ -60,10 +60,13 @@ The top bar shows four sections:
 | **UYU-USD** | Uruguayan Peso / Dollar pair dashboard |
 | **UYU-BRL** | Uruguayan Peso / Real pair dashboard |
 
-The right side of the nav bar has three controls:
+The right side of the nav bar has four controls:
 
 - **↻ Actualizar** (dashboard pages only) — fetches the latest rate from the API
   and refreshes the indicator cards.
+- **⚙ Cuota OER** (all pages) — manually checks the current Open Exchange Rates
+  quota status and shows plan, usage, remaining requests, and the app's local
+  safety guard.
 - **📤 Enviar** (all pages) — sends a Telegram message with the current status
   for every active pair. Shows ✓ / ⚠ / ✕ feedback inline.
 - **Salir** — ends the session (only shown when `ACCESS_PASSCODE` is set).
@@ -112,10 +115,25 @@ Each pair has its own page with the same structure:
 This section **auto-refreshes every 5 minutes**. You can also force a refresh
 with the **↻ Actualizar** button in the top bar.
 
+When the source is **Open Exchange Rates**, manual refresh follows the quota
+policy:
+
+- weekends do not trigger remote API calls,
+- Saturday and Sunday are mirrored locally from the latest Friday value so the
+  chart stays continuous,
+- repeated refreshes are throttled by a cooldown window,
+- once the local monthly safety cap is reached, the app stops making OER
+  requests until the next month.
+
 ### 2. Chart — Last 90 days
 
 Actual rate in purple, MA 30 in yellow, and MA 90 in red. Hover over the chart
 to see exact values for each date.
+
+If the selected source does not publish weekend updates, the app can fill
+Saturday and Sunday with synthetic rows copied from Friday's last known rate.
+These mirrored rows are stored in the database so the 90-day chart remains
+continuous without spending weekend API requests.
 
 ### 3. Configuration panel
 
@@ -247,19 +265,52 @@ To keep data up to date without manual intervention, configure cron jobs like th
 
 ```bash
 # Refresh all pairs and send the same Telegram snapshot as the "📤 Enviar" button
-0 7 * * * cd /path/to/project && uv run manage.py fetch_rates --days 3 --no-alerts
-30 12 * * * cd /path/to/project && uv run manage.py fetch_rates --days 3 --no-alerts
+0 7 * * 1-5 cd /path/to/project && uv run manage.py fetch_rates --days 3 --no-alerts
+30 12 * * 1-5 cd /path/to/project && uv run manage.py fetch_rates --days 3 --no-alerts
 ```
 
 In Docker deployment this schedule is already configured through `django-crontab`.
 The `--days 3` option fetches the last 3 days, ensuring no rate is missed due
 to timezone differences.
 
+### Open Exchange Rates quota strategy
+
+If you use `EXCHANGE_RATE_SOURCE=openexchangerates`, the app applies a more
+conservative policy to avoid exhausting the free plan:
+
+- weekday automatic refresh only,
+- no remote fetches on Saturday or Sunday,
+- local weekend mirroring for charts,
+- a local monthly request counter,
+- a configurable target cap, usually `95%` of the monthly quota,
+- an optional cooldown between manual checks and refreshes,
+- historical OER fetches disabled by default on the free plan.
+
+The relevant optional env vars are:
+
+```env
+OER_MONTHLY_REQUEST_QUOTA=1000
+OER_TARGET_USAGE_RATIO=0.95
+OER_MIN_REQUEST_INTERVAL_MINUTES=240
+OER_ALLOW_HISTORICAL=False
+```
+
+For paid OER plans, you can enable:
+
+```env
+OER_ALLOW_HISTORICAL=True
+```
+
+but that should be done only if the quota is large enough for historical calls.
+
 For the initial load or to update the full history:
 
 ```bash
 uv run manage.py fetch_rates --days 365
 ```
+
+If `OER_ALLOW_HISTORICAL=False`, Open Exchange Rates runs are automatically
+downgraded to latest-only mode to protect quota.
 
 ### Command options
 
@@ -300,6 +351,22 @@ No. Rate data comes from [AwesomeAPI](https://economia.awesomeapi.com.br), which
 free and requires no registration or API key. Telegram alerts are optional; they
 require a bot token from @BotFather and a chat ID.
 
+If you switch to **Open Exchange Rates**, then yes: you must set
+`OPENEXCHANGERATES_APP_ID`. On the free plan, the app is designed to conserve
+requests and stay under a configurable monthly safety cap.
+
+**How do I check the Open Exchange Rates quota manually?**
+Click **⚙ Cuota OER** in the top bar. The panel shows:
+
+- the current OER plan and API status,
+- requests used, remaining, and quota,
+- days elapsed and remaining in the OER month,
+- the app's local tracked usage and local safety cap,
+- a suggested remaining daily budget based on the configured quota target.
+
+This check is manual on purpose, so it does not add background traffic every
+time you open a page.
+
 **How do I set up Telegram alerts?**
 1. Open Telegram and start a chat with [@BotFather](https://t.me/BotFather).
 2. Send `/newbot` and follow the prompts — copy the token it gives you.
@@ -317,6 +384,9 @@ require a bot token from @BotFather and a chat ID.
 The "↻ Actualizar" button shows a spinner while trying to fetch data. If it
 fails, existing data is preserved with no error shown to the user. The CLI
 command does print the error.
+
+If the OER quota guard blocks a request, the app also keeps the current data and
+waits for the next allowed window or the next monthly reset.
 
 **Does the route comparator account for fees?**
 No. It calculates gross rates directly from the API rates. Your bank's or

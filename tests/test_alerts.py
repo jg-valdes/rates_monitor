@@ -14,7 +14,6 @@ from rates.services.alerts import (
 )
 from tests.factories import CurrencyPairFactory, ExchangeRateFactory, PairConfigFactory
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _indicators(rate=5.5, deviation=3.5, momentum="up", ma30=5.3, ma90=5.0):

@@ -12,12 +12,14 @@ class RatesConfig(AppConfig):
     def ready(self):
         # Avoid starting the scheduler twice when Django's dev reloader is active.
         import os
+
         if os.environ.get("RUN_MAIN") == "true" or not _is_runserver():
             _start_scheduler()
 
 
 def _is_runserver():
     import sys
+
     return "runserver" in sys.argv
 
 
@@ -31,13 +33,13 @@ def _start_scheduler():
     # Twice daily: 07:00 and 12:30 — fetch rates and send Telegram snapshot
     scheduler.add_job(
         fetch_rates_and_send_all_alerts,
-        CronTrigger(hour=7, minute=0),
+        CronTrigger(hour=7, minute=0, day_of_week="mon-fri"),
         id="fetch_and_alert_morning",
         max_instances=1,
     )
     scheduler.add_job(
         fetch_rates_and_send_all_alerts,
-        CronTrigger(hour=12, minute=30),
+        CronTrigger(hour=12, minute=30, day_of_week="mon-fri"),
         id="fetch_and_alert_midday",
         max_instances=1,
     )
@@ -49,4 +51,4 @@ def _start_scheduler():
         max_instances=1,
     )
     scheduler.start()
-    logger.info("scheduler: started (07:00, 12:30, 02:00 UTC)")
+    logger.info("scheduler: started (weekday 07:00, weekday 12:30, daily 02:00 UTC)")

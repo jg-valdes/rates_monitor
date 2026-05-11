@@ -21,6 +21,8 @@ import requests
 from django.conf import settings
 
 from rates.models import CurrencyPair, ExchangeRate
+from rates.services.market_calendar import is_weekend, mirror_missing_weekend_rates
+from rates.services.oer_quota import can_make_request, estimate_historical_requests, record_request
 
 BASE_URL = "https://openexchangerates.org/api"
 _SYMBOLS = "BRL,UYU"
@@ -29,6 +31,10 @@ logger = logging.getLogger(__name__)
 
 
 class OERError(Exception):
+    pass
+
+
+class OERQuotaExceeded(OERError):
     pass
 
 
@@ -45,7 +51,10 @@ def _get(url: str) -> dict:
         resp = requests.get(url, params={"app_id": _app_id(), "symbols": _SYMBOLS}, timeout=10)
     except requests.RequestException as exc:
         raise OERError(f"Network error: {exc}") from exc
+    record_request()
     if not resp.ok:
+        if resp.status_code == 429:
+            raise OERQuotaExceeded("Open Exchange Rates quota or rate limit was reached")
         raise OERError(f"HTTP {resp.status_code}: {resp.text[:200]}")
     return resp.json()
 
@@ -91,7 +100,12 @@ def _upsert_rates(cross_rates: dict[str, float], rate_date: date) -> tuple[int, 
             pair=pair,
             date=rate_date,
             # OER doesn't provide intraday high/low in the free tier
-            defaults={"rate": rate_value, "high": None, "low": None},
+            defaults={
+                "rate": rate_value,
+                "high": None,
+                "low": None,
+                "is_synthetic": False,
+            },
         )
         if was_created:
             created += 1
@@ -100,7 +114,7 @@ def _upsert_rates(cross_rates: dict[str, float], rate_date: date) -> tuple[int, 
     return created, updated
 
 
-def fetch_and_store(days: int = 90) -> tuple[int, int]:
+def fetch_and_store(days: int = 90, *, force: bool = False) -> tuple[int, int]:
     """
     Fetch OER rates and upsert cross rates for all three active pairs.
 
@@ -112,14 +126,45 @@ def fetch_and_store(days: int = 90) -> tuple[int, int]:
     Returns (total_created, total_updated).
     """
     total_created = total_updated = 0
+    active_pairs = list(
+        CurrencyPair.objects.filter(code__in=["USD-BRL", "UYU-USD", "UYU-BRL"], active=True)
+    )
+    today = date.today()
+    synthetic_created, synthetic_updated = mirror_missing_weekend_rates(
+        active_pairs, through_date=today
+    )
+
+    if is_weekend(today):
+        logger.info("OER: weekend detected — skipped remote fetch and mirrored Friday values")
+        return synthetic_created, synthetic_updated
+
+    _app_id()
+
+    if days > 1 and not getattr(settings, "OER_ALLOW_HISTORICAL", False):
+        logger.info("OER: historical fetch disabled by policy — using latest only")
+        days = 1
+
+    requests_needed = 1 if days <= 1 else estimate_historical_requests(days, today)
+    allowed, reason = can_make_request(requests_needed, ignore_interval=force)
+    if not allowed:
+        if days > 1:
+            allowed_latest, _ = can_make_request(1, ignore_interval=force)
+            if allowed_latest:
+                logger.warning(
+                    "OER: quota policy downgraded historical fetch to latest-only (%s)", reason
+                )
+                days = 1
+            else:
+                raise OERQuotaExceeded(reason)
+        else:
+            raise OERQuotaExceeded(reason)
 
     if days <= 1:
         rate_date, rates = _fetch_latest()
         cross = compute_cross_rates(rates)
         c, u = _upsert_rates(cross, rate_date)
-        return c, u
+        return c + synthetic_created, u + synthetic_updated
 
-    today = date.today()
     for offset in range(days - 1, -1, -1):
         target = today - timedelta(days=offset)
         if target.weekday() >= 5:  # skip Sat/Sun — markets closed
@@ -133,12 +178,21 @@ def fetch_and_store(days: int = 90) -> tuple[int, int]:
                 logger.warning(
                     "OER: historical endpoint requires a paid plan — falling back to latest only"
                 )
+                allowed_latest, latest_reason = can_make_request(1, ignore_interval=True)
+                if not allowed_latest:
+                    logger.warning(
+                        "OER: latest fallback blocked by quota policy (%s)", latest_reason
+                    )
+                    return total_created + synthetic_created, total_updated + synthetic_updated
                 rate_date, rates = _fetch_latest()
                 cross = compute_cross_rates(rates)
                 c, u = _upsert_rates(cross, rate_date)
                 total_created += c
                 total_updated += u
-                return total_created, total_updated
+                return (
+                    total_created + synthetic_created,
+                    total_updated + synthetic_updated,
+                )
             logger.warning("OER: skipping %s — %s", target, exc)
             continue
 
@@ -147,4 +201,4 @@ def fetch_and_store(days: int = 90) -> tuple[int, int]:
         total_created += c
         total_updated += u
 
-    return total_created, total_updated
+    return total_created + synthetic_created, total_updated + synthetic_updated

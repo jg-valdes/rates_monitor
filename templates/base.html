@@ -69,6 +69,15 @@
         <button
           class="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1.5
                  bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg"
+          hx-get="{% url 'rates:oer_usage_panel' %}"
+          hx-target="#oer-usage-panel"
+          hx-swap="innerHTML"
+        >
+          ⚙ Cuota OER
+        </button>
+        <button
+          class="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1.5
+                 bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg"
           hx-post="{% url 'rates:send_all_alerts' %}"
           hx-target="#nav-alert-feedback"
           hx-swap="innerHTML"
@@ -84,6 +93,8 @@
 
     </div>
   </nav>
+
+  <div id="oer-usage-panel" class="max-w-7xl mx-auto px-4 pt-4"></div>
 
   <main class="max-w-7xl mx-auto px-4 py-6">
     {% block content %}{% endblock %}

@@ -1,3 +1,4 @@
+import hmac
 import json
 import logging
 
@@ -7,15 +8,16 @@ from django.db.models import Count, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
-import hmac
 
 from rates.models import CurrencyPair, ExchangeRate, PairConfig, Purchase
+from rates.services import oer_fetcher
 from rates.services.alerts import send_all_current_alerts, send_test_alert
 from rates.services.cross_pair import compute_cross_pair
 from rates.services.decision import build_decision
 from rates.services.fetcher import fetch_and_store
-from rates.services import oer_fetcher
 from rates.services.indicators import compute_all, compute_rolling_ma
+from rates.services.market_calendar import mirror_missing_weekend_rates
+from rates.services.oer_usage import fetch_usage_summary
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,7 @@ def logout_view(request):
 
 def overview(request):
     pairs = list(CurrencyPair.objects.filter(active=True))
+    mirror_missing_weekend_rates(pairs)
     pair_ids = [p.id for p in pairs]
 
     # One query for all rates, pre-grouped by pair
@@ -72,7 +75,11 @@ def overview(request):
     for row in (
         Purchase.objects.filter(pair_id__in=pair_ids)
         .values("pair_id")
-        .annotate(total_spent=Sum("amount_spent"), total_received=Sum("amount_received"), count=Count("id"))
+        .annotate(
+            total_spent=Sum("amount_spent"),
+            total_received=Sum("amount_received"),
+            count=Count("id"),
+        )
     ):
         spent = row["total_spent"] or 0.0
         received = row["total_received"] or 0.0
@@ -107,6 +114,7 @@ def overview(request):
 
 def dashboard(request, pair_code):
     pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    mirror_missing_weekend_rates([pair])
     config = _get_or_create_config(pair)
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
     ctx = _build_context(pair, rates_list, config)
@@ -118,6 +126,7 @@ def dashboard(request, pair_code):
 @require_http_methods(["GET"])
 def stats_partial(request, pair_code):
     pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    mirror_missing_weekend_rates([pair])
     config = _get_or_create_config(pair)
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
     indicators = compute_all(rates_list)
@@ -136,7 +145,7 @@ def refresh_data(request, pair_code):
     source = getattr(settings, "EXCHANGE_RATE_SOURCE", "awesomeapi")
     try:
         if source == "openexchangerates":
-            oer_fetcher.fetch_and_store(days=3)
+            oer_fetcher.fetch_and_store(days=1, force=True)
         else:
             fetch_and_store(pair, days=3)
     except Exception:
@@ -160,7 +169,7 @@ def update_config(request, pair_code):
     def _float(key, default):
         try:
             return float(p[key])
-        except (KeyError, ValueError, TypeError):
+        except KeyError, ValueError, TypeError:
             return default
 
     def _float_or_none(key):
@@ -202,11 +211,26 @@ def send_all_alerts(request):
         )
     if sent == 0:
         return HttpResponse(
-            '<span class="text-red-400 text-xs">✕ Error — revisa TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID</span>'
+            (
+                '<span class="text-red-400 text-xs">'
+                "✕ Error — revisa TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID"
+                "</span>"
+            )
         )
     return HttpResponse(
         f'<span class="text-amber-400 text-xs">⚠ {sent} enviadas, {failed} fallaron</span>'
     )
+
+
+@require_http_methods(["GET"])
+def oer_usage_panel(request):
+    try:
+        usage = fetch_usage_summary()
+        context = {"usage": usage, "error": None}
+    except Exception as exc:
+        logger.warning("oer_usage_panel: fetch failed", exc_info=True)
+        context = {"usage": None, "error": str(exc)}
+    return render(request, "rates/partials/oer_usage_panel.html", context)
 
 
 # ── Test alert ────────────────────────────────────────────────────────────────
@@ -215,6 +239,7 @@ def send_all_alerts(request):
 @require_http_methods(["POST"])
 def test_alert(request, pair_code):
     pair = get_object_or_404(CurrencyPair, code=pair_code.upper(), active=True)
+    mirror_missing_weekend_rates([pair])
     config = _get_or_create_config(pair)
     rates_list = list(ExchangeRate.objects.filter(pair=pair).order_by("date"))
     indicators = compute_all(rates_list)
@@ -229,9 +254,15 @@ def test_alert(request, pair_code):
         logger.warning("test_alert failed for %s", pair.code, exc_info=True)
         ok = False
     if ok:
-        return HttpResponse('<span class="text-emerald-400 text-xs">✓ Alerta enviada a Telegram</span>')
+        return HttpResponse(
+            '<span class="text-emerald-400 text-xs">✓ Alerta enviada a Telegram</span>'
+        )
     return HttpResponse(
-        '<span class="text-red-400 text-xs">✕ Error — revisa TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID</span>'
+        (
+            '<span class="text-red-400 text-xs">'
+            "✕ Error — revisa TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID"
+            "</span>"
+        )
     )
 
 
@@ -249,7 +280,7 @@ def add_purchase(request, pair_code):
             amount_received=float(request.POST["amount_received"]),
             note=request.POST.get("note", "").strip(),
         )
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         pass
     return render(
         request,

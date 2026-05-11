@@ -26,6 +26,7 @@ class ExchangeRateFactory(DjangoModelFactory):
     rate = 5.0
     high = None
     low = None
+    is_synthetic = False
 
 
 class PairConfigFactory(DjangoModelFactory):

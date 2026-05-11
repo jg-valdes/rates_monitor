@@ -1,11 +1,12 @@
 """Tests for rates/views.py."""
+
 import datetime
 from unittest.mock import patch
 
 import pytest
-from django.test import Client
 from django.urls import reverse
 
+from rates.models import CurrencyPair, PairConfig, Purchase
 from tests.factories import (
     CurrencyPairFactory,
     ExchangeRateFactory,
@@ -13,8 +14,8 @@ from tests.factories import (
     PurchaseFactory,
 )
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_pair_with_rates(code="USD-BRL", n=90):
     pair = CurrencyPairFactory(code=code, name=f"{code} name")
@@ -26,6 +27,7 @@ def _make_pair_with_rates(code="USD-BRL", n=90):
 
 
 # ── Auth views ────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 class TestLoginView:
@@ -69,6 +71,7 @@ class TestLogoutView:
 
 # ── Overview ──────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.django_db
 class TestOverviewView:
     def test_ok_with_no_pairs(self, client):
@@ -95,16 +98,12 @@ class TestOverviewView:
         assert resp.status_code == 200
 
     def test_overview_with_purchases_shows_totals(self, client):
-        from rates.models import PairConfig
-
         pair = _make_pair_with_rates("USD-BRL")
         PurchaseFactory(pair=pair, amount_spent=100.0, amount_received=550.0)
         resp = client.get(reverse("rates:overview"))
         assert resp.status_code == 200
 
     def test_overview_auto_creates_missing_config(self, client):
-        from rates.models import PairConfig
-
         # Delete config for one seeded pair so the bulk_create path is exercised
         pair = _make_pair_with_rates("USD-BRL")
         PairConfig.objects.filter(pair=pair).delete()
@@ -114,6 +113,7 @@ class TestOverviewView:
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 class TestDashboardView:
@@ -153,6 +153,7 @@ class TestDashboardView:
 
 # ── Stats partial ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.django_db
 class TestStatsPartial:
     def test_ok(self, client):
@@ -167,6 +168,7 @@ class TestStatsPartial:
 
 
 # ── Refresh data ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 class TestRefreshData:
@@ -190,6 +192,7 @@ class TestRefreshData:
 
 # ── Update config ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.django_db
 class TestUpdateConfig:
     def _post(self, client, pair, data):
@@ -200,92 +203,127 @@ class TestUpdateConfig:
         )
 
     def test_saves_budget(self, client):
-        from rates.models import PairConfig
-
         pair = _make_pair_with_rates("USD-BRL")
-        self._post(client, pair, {"monthly_budget": "2000", "threshold_strong_buy": "3.0",
-                                   "threshold_moderate_buy": "1.5", "threshold_do_not_buy": "-1.0"})
+        self._post(
+            client,
+            pair,
+            {
+                "monthly_budget": "2000",
+                "threshold_strong_buy": "3.0",
+                "threshold_moderate_buy": "1.5",
+                "threshold_do_not_buy": "-1.0",
+            },
+        )
         assert PairConfig.objects.get(pair=pair).monthly_budget == pytest.approx(2000.0)
 
     def test_saves_thresholds(self, client):
-        from rates.models import PairConfig
-
         pair = _make_pair_with_rates("USD-BRL")
-        self._post(client, pair, {
-            "monthly_budget": "1000",
-            "threshold_strong_buy": "4.0",
-            "threshold_moderate_buy": "2.0",
-            "threshold_do_not_buy": "-2.0",
-        })
+        self._post(
+            client,
+            pair,
+            {
+                "monthly_budget": "1000",
+                "threshold_strong_buy": "4.0",
+                "threshold_moderate_buy": "2.0",
+                "threshold_do_not_buy": "-2.0",
+            },
+        )
         cfg = PairConfig.objects.get(pair=pair)
         assert cfg.threshold_strong_buy == pytest.approx(4.0)
         assert cfg.threshold_moderate_buy == pytest.approx(2.0)
         assert cfg.threshold_do_not_buy == pytest.approx(-2.0)
 
     def test_alert_on_strong_buy_checkbox(self, client):
-        from rates.models import PairConfig
-
         pair = _make_pair_with_rates("USD-BRL")
-        self._post(client, pair, {
-            "monthly_budget": "1000", "threshold_strong_buy": "3",
-            "threshold_moderate_buy": "1.5", "threshold_do_not_buy": "-1",
-            "alert_on_strong_buy": "on",
-        })
+        self._post(
+            client,
+            pair,
+            {
+                "monthly_budget": "1000",
+                "threshold_strong_buy": "3",
+                "threshold_moderate_buy": "1.5",
+                "threshold_do_not_buy": "-1",
+                "alert_on_strong_buy": "on",
+            },
+        )
         assert PairConfig.objects.get(pair=pair).alert_on_strong_buy is True
 
     def test_alert_on_strong_buy_unchecked(self, client):
-        from rates.models import PairConfig
-
         pair = _make_pair_with_rates("USD-BRL")
         PairConfig.objects.filter(pair=pair).update(alert_on_strong_buy=True)
-        self._post(client, pair, {
-            "monthly_budget": "1000", "threshold_strong_buy": "3",
-            "threshold_moderate_buy": "1.5", "threshold_do_not_buy": "-1",
-            # no alert_on_strong_buy key → unchecked
-        })
+        self._post(
+            client,
+            pair,
+            {
+                "monthly_budget": "1000",
+                "threshold_strong_buy": "3",
+                "threshold_moderate_buy": "1.5",
+                "threshold_do_not_buy": "-1",
+                # no alert_on_strong_buy key → unchecked
+            },
+        )
         assert PairConfig.objects.get(pair=pair).alert_on_strong_buy is False
 
     def test_invalid_budget_keeps_default(self, client):
-        from rates.models import PairConfig
-
         pair = _make_pair_with_rates("USD-BRL")
         PairConfig.objects.filter(pair=pair).update(monthly_budget=1000.0)
-        self._post(client, pair, {
-            "monthly_budget": "not-a-number",
-            "threshold_strong_buy": "3", "threshold_moderate_buy": "1.5", "threshold_do_not_buy": "-1",
-        })
+        self._post(
+            client,
+            pair,
+            {
+                "monthly_budget": "not-a-number",
+                "threshold_strong_buy": "3",
+                "threshold_moderate_buy": "1.5",
+                "threshold_do_not_buy": "-1",
+            },
+        )
         assert PairConfig.objects.get(pair=pair).monthly_budget == pytest.approx(1000.0)
 
     def test_invalid_optional_float_saved_as_none(self, client):
-        from rates.models import PairConfig
-
         pair = _make_pair_with_rates("USD-BRL")
-        self._post(client, pair, {
-            "monthly_budget": "1000", "threshold_strong_buy": "3",
-            "threshold_moderate_buy": "1.5", "threshold_do_not_buy": "-1",
-            "alert_on_deviation_above": "not-a-number",  # triggers ValueError in _float_or_none
-        })
+        self._post(
+            client,
+            pair,
+            {
+                "monthly_budget": "1000",
+                "threshold_strong_buy": "3",
+                "threshold_moderate_buy": "1.5",
+                "threshold_do_not_buy": "-1",
+                "alert_on_deviation_above": "not-a-number",  # triggers ValueError in _float_or_none
+            },
+        )
         assert PairConfig.objects.get(pair=pair).alert_on_deviation_above is None
 
     def test_htmx_returns_partial(self, client):
         pair = _make_pair_with_rates("USD-BRL")
-        resp = self._post(client, pair, {
-            "monthly_budget": "1000", "threshold_strong_buy": "3",
-            "threshold_moderate_buy": "1.5", "threshold_do_not_buy": "-1",
-        })
+        resp = self._post(
+            client,
+            pair,
+            {
+                "monthly_budget": "1000",
+                "threshold_strong_buy": "3",
+                "threshold_moderate_buy": "1.5",
+                "threshold_do_not_buy": "-1",
+            },
+        )
         assert resp.status_code == 200
 
     def test_non_htmx_redirects(self, client):
         pair = _make_pair_with_rates("USD-BRL")
         resp = client.post(
             reverse("rates:update_config", kwargs={"pair_code": pair.slug}),
-            {"monthly_budget": "1000", "threshold_strong_buy": "3",
-             "threshold_moderate_buy": "1.5", "threshold_do_not_buy": "-1"},
+            {
+                "monthly_budget": "1000",
+                "threshold_strong_buy": "3",
+                "threshold_moderate_buy": "1.5",
+                "threshold_do_not_buy": "-1",
+            },
         )
         assert resp.status_code == 302
 
 
 # ── Test alert (per-pair) ─────────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 class TestTestAlert:
@@ -325,25 +363,28 @@ class TestTestAlert:
 
 # ── Send all alerts ───────────────────────────────────────────────────────────
 
+
 @pytest.mark.django_db
 class TestSendAllAlerts:
     def test_no_pairs_returns_zero_sent(self, client):
-        from rates.models import CurrencyPair
-
         CurrencyPair.objects.all().update(active=False)
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 0, "total": 0}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 0, "failed": 0, "total": 0},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "0 alertas" in resp.content.decode()
 
     def test_all_sent_returns_success(self, client):
-        from rates.models import CurrencyPair
-
         # Deactivate seeded pairs so only our test pairs are processed
         CurrencyPair.objects.all().update(active=False)
         _make_pair_with_rates("TST-AA")
         _make_pair_with_rates("TST-BB")
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 2, "failed": 0, "total": 2}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 2, "failed": 0, "total": 2},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✓" in resp.content.decode()
@@ -351,7 +392,10 @@ class TestSendAllAlerts:
 
     def test_all_failed_returns_error(self, client):
         _make_pair_with_rates("USD-BRL")
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 1, "total": 1}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 0, "failed": 1, "total": 1},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✕" in resp.content.decode()
@@ -359,14 +403,20 @@ class TestSendAllAlerts:
     def test_partial_failure_returns_warning(self, client):
         _make_pair_with_rates("USD-BRL")
         _make_pair_with_rates("UYU-USD")
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 1, "failed": 1, "total": 2}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 1, "failed": 1, "total": 2},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "⚠" in resp.content.decode()
 
     def test_pair_without_data_counted_as_failed(self, client):
         CurrencyPairFactory(code="USD-BRL")  # no rates
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 1, "total": 1}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 0, "failed": 1, "total": 1},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✕" in resp.content.decode()
@@ -377,19 +427,64 @@ class TestSendAllAlerts:
 
     def test_exception_per_pair_counted_as_failed(self, client):
         _make_pair_with_rates("USD-BRL")
-        with patch("rates.views.send_all_current_alerts", return_value={"sent": 0, "failed": 1, "total": 1}):
+        with patch(
+            "rates.views.send_all_current_alerts",
+            return_value={"sent": 0, "failed": 1, "total": 1},
+        ):
             resp = client.post(reverse("rates:send_all_alerts"))
         assert resp.status_code == 200
         assert "✕" in resp.content.decode()
 
 
+# ── OER usage panel ───────────────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+class TestOERUsagePanel:
+    def test_only_get_allowed(self, client):
+        resp = client.post(reverse("rates:oer_usage_panel"))
+        assert resp.status_code == 405
+
+    def test_renders_usage_panel(self, client):
+        with patch(
+            "rates.views.fetch_usage_summary",
+            return_value={
+                "app_id": "test-key-123",
+                "status": "active",
+                "plan_name": "Enterprise",
+                "quota_label": "100,000 requests/month",
+                "update_frequency": "30-minute",
+                "features": {"base": True, "convert": False},
+                "requests_used": 54524,
+                "requests_quota": 100000,
+                "requests_remaining": 45476,
+                "days_elapsed": 16,
+                "days_remaining": 14,
+                "daily_average": 2842,
+                "usage_pct": 54.52,
+            },
+        ):
+            resp = client.get(reverse("rates:oer_usage_panel"))
+
+        assert resp.status_code == 200
+        assert "Enterprise" in resp.content.decode()
+        assert "54.52%" in resp.content.decode()
+        assert "test-key-123" not in resp.content.decode()
+
+    def test_renders_error_state(self, client):
+        with patch("rates.views.fetch_usage_summary", side_effect=Exception("boom")):
+            resp = client.get(reverse("rates:oer_usage_panel"))
+
+        assert resp.status_code == 200
+        assert "boom" in resp.content.decode()
+
+
 # ── Purchases ─────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 class TestAddPurchase:
     def test_creates_purchase(self, client):
-        from rates.models import Purchase
-
         pair = _make_pair_with_rates("USD-BRL")
         resp = client.post(
             reverse("rates:add_purchase", kwargs={"pair_code": pair.slug}),
@@ -399,8 +494,6 @@ class TestAddPurchase:
         assert Purchase.objects.filter(pair=pair).count() == 1
 
     def test_invalid_data_ignored(self, client):
-        from rates.models import Purchase
-
         pair = _make_pair_with_rates("USD-BRL")
         resp = client.post(
             reverse("rates:add_purchase", kwargs={"pair_code": pair.slug}),
@@ -421,8 +514,6 @@ class TestAddPurchase:
 @pytest.mark.django_db
 class TestDeletePurchase:
     def test_deletes_purchase(self, client):
-        from rates.models import Purchase
-
         pair = _make_pair_with_rates("USD-BRL")
         purchase = PurchaseFactory(pair=pair)
         resp = client.post(
@@ -432,8 +523,6 @@ class TestDeletePurchase:
         assert Purchase.objects.filter(pk=purchase.pk).count() == 0
 
     def test_cannot_delete_other_pairs_purchase(self, client):
-        from rates.models import Purchase
-
         pair1 = _make_pair_with_rates("USD-BRL")
         pair2 = _make_pair_with_rates("UYU-USD")
         purchase = PurchaseFactory(pair=pair2)
