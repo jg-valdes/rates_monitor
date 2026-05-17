@@ -111,6 +111,22 @@ class TestOverviewView:
         assert resp.status_code == 200
         assert PairConfig.objects.filter(pair=pair).exists()
 
+    def test_footer_shows_awesomeapi_source(self, client, settings):
+        settings.EXCHANGE_RATE_SOURCE = "awesomeapi"
+        resp = client.get(reverse("rates:overview"))
+        body = resp.content.decode()
+        assert resp.status_code == 200
+        assert "economia.awesomeapi.com.br" in body
+        assert "Se actualiza cada hora" in body
+
+    def test_footer_shows_oer_source(self, client, settings):
+        settings.EXCHANGE_RATE_SOURCE = "openexchangerates"
+        resp = client.get(reverse("rates:overview"))
+        body = resp.content.decode()
+        assert resp.status_code == 200
+        assert "openexchangerates.org" in body
+        assert "Se actualiza según el plan y la cuota configurada" in body
+
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
@@ -509,6 +525,26 @@ class TestAddPurchase:
             {"date": "2024-06-01", "amount_spent": "100", "amount_received": "500"},
         )
         assert resp.status_code == 200
+
+    def test_partial_shows_operations_label_and_scroll_container(self, client):
+        pair = _make_pair_with_rates("USD-BRL")
+        for day in range(3):
+            PurchaseFactory(
+                pair=pair,
+                date=datetime.date(2024, 6, 1 + day),
+                amount_spent=100.0 + day,
+                amount_received=500.0 + day,
+            )
+
+        resp = client.post(
+            reverse("rates:add_purchase", kwargs={"pair_code": pair.slug}),
+            {"date": "2024-06-10", "amount_spent": "100", "amount_received": "500"},
+        )
+
+        body = resp.content.decode()
+        assert resp.status_code == 200
+        assert "4 operaciones" in body
+        assert "max-h-[28rem] overflow-auto" in body
 
 
 @pytest.mark.django_db
