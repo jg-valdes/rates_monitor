@@ -91,12 +91,12 @@
     <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
       <p class="text-xs text-gray-500 uppercase tracking-widest">Compras Registradas</p>
       {% if totals %}
-      <span class="text-xs text-gray-600">{{ totals.count }} operación{% if totals.count != 1 %}es{% endif %}</span>
+      <span class="text-xs text-gray-600">{{ totals.count }} operaciones</span>
       {% endif %}
     </div>
 
     {% if purchases %}
-    <div class="overflow-x-auto">
+    <div class="max-h-[28rem] overflow-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-xs text-gray-600 uppercase border-b border-gray-800">
