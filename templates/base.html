@@ -13,6 +13,20 @@
     .htmx-request .htmx-indicator,
     .htmx-request.htmx-indicator { opacity: 1; }
     .htmx-request .htmx-stable { opacity: 0.6; }
+    .money-input input { padding-left: 2.75rem; }
+    input[type="date"],
+    input[type="month"] {
+      color-scheme: dark;
+      min-height: 2.5rem;
+      cursor: pointer;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="month"]::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.75;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator:hover,
+    input[type="month"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   </style>
 </head>
 <body class="text-gray-100 min-h-screen font-sans antialiased"
@@ -37,6 +51,15 @@
                     text-gray-400 hover:text-white hover:bg-gray-800
                   {% endif %}">
           Resumen
+        </a>
+        <a href="{% url 'rates:payments' %}"
+           class="px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap
+                  {% if request.resolver_match.url_name == 'payments' or request.resolver_match.url_name == 'payments_plan' or request.resolver_match.url_name == 'payment_plan_new' %}
+                    bg-indigo-600 text-white font-semibold
+                  {% else %}
+                    text-gray-400 hover:text-white hover:bg-gray-800
+                  {% endif %}">
+          Vivienda
         </a>
         {% for p in all_pairs %}
         <a href="{% url 'rates:dashboard' p.slug %}"
@@ -103,5 +126,12 @@
   <footer class="text-center text-gray-700 text-xs py-6">
     Datos de {{ footer_rate_source.provider }} &bull; {{ footer_rate_source.update_note }}
   </footer>
+  <script>
+    document.addEventListener('click', function (event) {
+      const input = event.target.closest('input[type="date"], input[type="month"]');
+      if (!input || typeof input.showPicker !== 'function') return;
+      try { input.showPicker(); } catch (_) { /* Native picker remains available. */ }
+    });
+  </script>
 </body>
 </html>

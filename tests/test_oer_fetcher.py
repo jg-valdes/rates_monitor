@@ -22,6 +22,16 @@ def _oer_app_id(settings):
     settings.OER_MIN_REQUEST_INTERVAL_MINUTES = 0
 
 
+@pytest.fixture(autouse=True)
+def _weekday_for_remote_fetch_tests():
+    """Keep remote-fetch tests independent from the weekday of the test run."""
+    with patch("rates.services.oer_fetcher.date") as mock_date:
+        mock_date.today.return_value = dt.date(2024, 6, 5)
+        mock_date.fromtimestamp.side_effect = dt.date.fromtimestamp
+        mock_date.side_effect = lambda *args, **kwargs: dt.date(*args, **kwargs)
+        yield
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 

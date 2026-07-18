@@ -7,7 +7,10 @@ class TestCronJobs:
     def test_fetch_rates_and_send_all_alerts_runs_combined_job(self):
         with (
             patch("rates.cron.call_command") as mock_call_command,
-            patch("rates.services.alerts.send_all_current_alerts", return_value={"sent": 3, "failed": 0, "total": 3}) as mock_send,
+            patch(
+                "rates.services.alerts.send_all_current_alerts",
+                return_value={"sent": 3, "failed": 0, "total": 3},
+            ) as mock_send,
         ):
             cron.fetch_rates_and_send_all_alerts()
 

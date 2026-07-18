@@ -127,6 +127,25 @@ Records actual conversions executed by the user. Fields: `pair`, `date`,
 The effective rate (`effective_rate`) is a computed property:
 `amount_received / amount_spent`.
 
+### Property payment models
+
+`PropertyPurchasePlan` snapshots the contract base CUB. `PaymentSeries` defines
+monthly, yearly, and keys recurrences; setup expands them into persisted
+`PaymentObligation` rows. `PaymentTransaction` is append-only and corrections
+are represented with void metadata. `CubIndexValue` stores one verified value
+per series and applicable month.
+
+Pure schedule, Decimal adjustment, forecast, and status rules live in
+`services/payment_calculations.py`. `services/cub_fetcher.py` parses the official
+page without writing to the database; `payment_views.py` validates confirmation
+and performs persistence atomically.
+
+Plan edits synchronize series by sequence. Obligations without transactions are
+updated, created, or removed to match the edited recurrence. Obligations with
+any payment history or an explicit settlement are protected from bulk changes;
+`calculation_base_cub_value` preserves the historical base even when the plan's
+base CUB later changes.
+
 ---
 
 ## Service layer

@@ -1,4 +1,5 @@
 """Tests for rates/services/indicators.py — pure functions, no DB needed."""
+
 import datetime
 from unittest.mock import MagicMock
 
@@ -135,7 +136,16 @@ class TestComputeAll:
         rates = [self._make_rate(5.0 + i * 0.01, i) for i in range(90)]
         result = compute_all(rates)
         assert result is not None
-        for key in ("current_rate", "current_date", "ma30", "ma90", "deviation", "momentum", "volatility", "data_points"):
+        for key in (
+            "current_rate",
+            "current_date",
+            "ma30",
+            "ma90",
+            "deviation",
+            "momentum",
+            "volatility",
+            "data_points",
+        ):
             assert key in result
 
     def test_current_rate_is_last(self):

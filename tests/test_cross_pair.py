@@ -1,4 +1,5 @@
 """Tests for rates/services/cross_pair.py."""
+
 import datetime
 
 import pytest
@@ -64,7 +65,15 @@ class TestComputeCrossPair:
         _create_pair_with_rate("UYU-USD", 0.04)
         _create_pair_with_rate("USD-BRL", 5.5)
         result = compute_cross_pair()
-        for key in ("direct_rate", "indirect_rate", "best_route", "advantage_pct", "uyu_brl", "uyu_usd", "usd_brl"):
+        for key in (
+            "direct_rate",
+            "indirect_rate",
+            "best_route",
+            "advantage_pct",
+            "uyu_brl",
+            "uyu_usd",
+            "usd_brl",
+        ):
             assert key in result
 
     def test_uses_most_recent_rate(self):

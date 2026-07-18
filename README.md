@@ -2,7 +2,9 @@
 
 Personal tool to find the best timing and route for converting
 Uruguayan Pesos (UYU) to Brazilian Reais (BRL), monitoring three currency pairs
-with technical indicators and an automatic route comparator.
+with technical indicators and an automatic route comparator. It also controls a
+property purchase schedule with monthly installments, yearly reinforcements,
+keys payment, CUB-SC adjustments, and actual payment progress.
 
 **Monitored pairs:** USD-BRL · UYU-USD · UYU-BRL
 
@@ -94,6 +96,7 @@ EXCHANGE_RATE_SOURCE=awesomeapi          # default — free, no key needed
 # OER_TARGET_USAGE_RATIO=0.95           # stay under 95% of monthly quota
 # OER_MIN_REQUEST_INTERVAL_MINUTES=240  # block repeated manual refresh spam
 # OER_ALLOW_HISTORICAL=False            # keep False on the free plan
+CUB_SOURCE_URL=https://www.sindusconbc.com.br/cub/ # assisted CUB preview
 ```
 
 ---

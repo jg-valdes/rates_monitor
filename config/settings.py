@@ -42,6 +42,10 @@ OER_MIN_REQUEST_INTERVAL_MINUTES = config(
 )
 OER_ALLOW_HISTORICAL = config("OER_ALLOW_HISTORICAL", default=False, cast=bool)
 
+# Official CUB-SC page used by the assisted payment-index preview. Values are
+# never saved without explicit confirmation in the UI.
+CUB_SOURCE_URL = config("CUB_SOURCE_URL", default="https://www.sindusconbc.com.br/cub/")
+
 # ── Telegram alerts ───────────────────────────────────────────────────────────
 # Both must be set for alerts to be sent. Leave empty to disable.
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")

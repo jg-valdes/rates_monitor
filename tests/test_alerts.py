@@ -1,10 +1,12 @@
 """Tests for rates/services/alerts.py."""
+
 import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 
+from rates.models import CurrencyPair
 from rates.services.alerts import (
     _build_message,
     _send_telegram,
@@ -15,6 +17,7 @@ from rates.services.alerts import (
 from tests.factories import CurrencyPairFactory, ExchangeRateFactory, PairConfigFactory
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _indicators(rate=5.5, deviation=3.5, momentum="up", ma30=5.3, ma90=5.0):
     return {
@@ -48,6 +51,7 @@ def _config(
 
 
 # ── _build_message ────────────────────────────────────────────────────────────
+
 
 class TestBuildMessage:
     def test_contains_pair_name(self):
@@ -87,6 +91,7 @@ class TestBuildMessage:
 
 # ── _send_telegram ────────────────────────────────────────────────────────────
 
+
 class TestSendTelegram:
     def test_returns_false_when_no_token(self, settings):
         settings.TELEGRAM_BOT_TOKEN = ""
@@ -115,7 +120,9 @@ class TestSendTelegram:
     def test_raises_on_network_error(self, settings):
         settings.TELEGRAM_BOT_TOKEN = "tok"
         settings.TELEGRAM_CHAT_ID = "999"
-        with patch("rates.services.alerts.requests.post", side_effect=requests.RequestException("timeout")):
+        with patch(
+            "rates.services.alerts.requests.post", side_effect=requests.RequestException("timeout")
+        ):
             with pytest.raises(requests.RequestException):
                 _send_telegram("hello")
 
@@ -130,6 +137,7 @@ class TestSendTelegram:
 
 
 # ── check_and_send ────────────────────────────────────────────────────────────
+
 
 class TestCheckAndSend:
     def _send_patch(self, ok=True):
@@ -181,15 +189,21 @@ class TestCheckAndSend:
         assert result == []
 
     def test_multiple_triggers_sends_multiple_messages(self):
-        cfg = _config(alert_on_strong_buy=True, alert_on_deviation_above=2.0, alert_on_rate_above=5.0)
+        cfg = _config(
+            alert_on_strong_buy=True, alert_on_deviation_above=2.0, alert_on_rate_above=5.0
+        )
         with self._send_patch() as mock_send:
-            result = check_and_send(_indicators(rate=5.5, deviation=3.5), _decision(signal="STRONG BUY"), cfg, "X")
+            result = check_and_send(
+                _indicators(rate=5.5, deviation=3.5), _decision(signal="STRONG BUY"), cfg, "X"
+            )
         assert len(result) == 3
         assert mock_send.call_count == 3
 
     def test_telegram_error_is_logged_not_raised(self):
         cfg = _config(alert_on_strong_buy=True)
-        with patch("rates.services.alerts._send_telegram", side_effect=requests.RequestException("timeout")):
+        with patch(
+            "rates.services.alerts._send_telegram", side_effect=requests.RequestException("timeout")
+        ):
             # Should not raise
             result = check_and_send(_indicators(), _decision(signal="STRONG BUY"), cfg, "X")
         assert len(result) == 1  # message was triggered
@@ -202,6 +216,7 @@ class TestCheckAndSend:
 
 
 # ── send_test_alert ───────────────────────────────────────────────────────────
+
 
 class TestSendTestAlert:
     def test_returns_result_of_send_telegram(self, settings):
@@ -222,6 +237,11 @@ class TestSendTestAlert:
 
 @pytest.mark.django_db
 class TestSendAllCurrentAlerts:
+    def setup_method(self):
+        # The pair-seeding data migration is part of the production schema. These
+        # unit tests build their own exact pair set, so isolate it explicitly.
+        CurrencyPair.objects.all().delete()
+
     def _make_pair_with_rates(self, code="USD-BRL", n=90):
         pair = CurrencyPairFactory(code=code, name=f"{code} name")
         base = datetime.date(2024, 1, 1)

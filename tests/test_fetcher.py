@@ -1,4 +1,5 @@
 """Tests for rates/services/fetcher.py."""
+
 import datetime
 from unittest.mock import MagicMock, patch
 
@@ -31,6 +32,7 @@ def _record(bid="5.1234", create_date="2024-06-01 12:00:00", timestamp=None, hig
 
 # ── _fetch_daily ──────────────────────────────────────────────────────────────
 
+
 class TestFetchDaily:
     def test_returns_json_on_success(self):
         data = [_record()]
@@ -39,12 +41,17 @@ class TestFetchDaily:
         assert result == data
 
     def test_raises_on_non_ok(self):
-        with patch("rates.services.fetcher.requests.get", return_value=_mock_response([], status=500, ok=False)):
+        with patch(
+            "rates.services.fetcher.requests.get",
+            return_value=_mock_response([], status=500, ok=False),
+        ):
             with pytest.raises(AwesomeApiError, match="HTTP 500"):
                 _fetch_daily("USD-BRL", 1)
 
     def test_raises_on_network_error(self):
-        with patch("rates.services.fetcher.requests.get", side_effect=requests.RequestException("timeout")):
+        with patch(
+            "rates.services.fetcher.requests.get", side_effect=requests.RequestException("timeout")
+        ):
             with pytest.raises(AwesomeApiError, match="Network error"):
                 _fetch_daily("USD-BRL", 1)
 
@@ -66,6 +73,7 @@ class TestFetchDaily:
 
 
 # ── fetch_and_store ───────────────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 class TestFetchAndStore:

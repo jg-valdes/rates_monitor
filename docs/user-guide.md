@@ -56,6 +56,7 @@ The top bar shows four sections:
 | Tab | Contents |
 |---|---|
 | **Resumen** | Route comparator + status of all three pairs + deployed capital |
+| **Vivienda** | Property contract, CUB adjustment, schedule, and payment progress |
 | **USD-BRL** | Dollar / Real pair dashboard |
 | **UYU-USD** | Uruguayan Peso / Dollar pair dashboard |
 | **UYU-BRL** | Uruguayan Peso / Real pair dashboard |
@@ -70,6 +71,53 @@ The right side of the nav bar has four controls:
 - **📤 Enviar** (all pages) — sends a Telegram message with the current status
   for every active pair. Shows ✓ / ⚠ / ✕ feedback inline.
 - **Salir** — ends the session (only shown when `ACCESS_PASSCODE` is set).
+
+---
+
+## Vivienda and property payments
+
+The **Vivienda** section keeps the house contract separate from currency
+conversions. On first use, enter the contract date and base CUB, then configure:
+
+- an optional entry payment split into one or more independently tracked terms,
+- monthly installments with their first due date, quantity, and base amount,
+- optional yearly reinforcements,
+- an optional keys-payment milestone,
+- whether CUB applies independently to each payment series.
+
+Review the generated calendar before creating the plan. Monthly dates preserve
+the selected day when possible and use the last valid day for shorter months.
+
+Use **Editar plan** to change the contract, CUB base, installment count,
+amounts, entry terms, reinforcements, or keys payment. Saving regenerates only obligations
+without payment history. Paid or explicitly closed obligations preserve their
+date, base amount, CUB snapshot, and adjusted amount; correct those rows
+individually from **Editar cuota protegida manualmente**.
+
+### How the CUB calculation works
+
+For obligations adjusted by CUB, the expected amount is:
+
+```
+base amount × CUB applicable to the due month ÷ contract base CUB
+```
+
+The result is rounded to BRL cents. When the exact future month is not stored,
+the page uses the latest verified CUB only as a **provisional** forecast. Add a
+value manually or use **Consultar fuente** to preview values from Sinduscon BC;
+assisted values are saved only after confirmation.
+
+### Recording payments
+
+Open the action menu on any obligation to register one or more partial payments.
+The page shows expected, paid, balance, and variance amounts. A payment entered
+by mistake can be voided: it remains visible in history but stops contributing
+to totals. Use **Cerrar como pagado** when the builder's final invoiced amount
+differs from the calculated value.
+
+The next-payment card also displays an approximate USD requirement based on the
+latest stored USD-BRL rate. This estimate never changes the BRL contract or
+creates a currency purchase automatically.
 
 ---
 
