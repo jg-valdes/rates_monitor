@@ -255,6 +255,8 @@ class TestPaymentWorkspace:
         assert response.status_code == 200
         assert "Apartamento 301" in body
         assert "Vivienda" in body
+        assert "data-mobile-nav" in body
+        assert 'order-3' in body
         assert "Variación de la cuota mensual" in body
         assert "Índice CUB-SC vigente" in body
         assert body.count("Consultar fuente") == 1
