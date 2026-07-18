@@ -13,13 +13,27 @@
     .htmx-request .htmx-indicator,
     .htmx-request.htmx-indicator { opacity: 1; }
     .htmx-request .htmx-stable { opacity: 0.6; }
+    .money-input input { padding-left: 2.75rem; }
+    input[type="date"],
+    input[type="month"] {
+      color-scheme: dark;
+      min-height: 2.5rem;
+      cursor: pointer;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="month"]::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.75;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator:hover,
+    input[type="month"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   </style>
 </head>
 <body class="text-gray-100 min-h-screen font-sans antialiased"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
   <nav class="bg-gray-900 border-b border-gray-800 px-4 py-3 sticky top-0 z-10">
-    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-3 lg:flex-nowrap">
 
       {# Brand #}
       <a href="{% url 'rates:overview' %}" class="flex items-center gap-2 shrink-0">
@@ -27,8 +41,13 @@
         <span class="text-gray-600 text-sm">Cambiario</span>
       </a>
 
+      <a href="{% url 'rates:logout' %}"
+         class="text-sm text-gray-500 hover:text-gray-200 transition-colors lg:hidden">
+        Salir
+      </a>
+
       {# Pair tabs #}
-      <div class="flex items-center gap-1 overflow-x-auto">
+      <div data-mobile-nav class="order-3 -mx-1 flex w-[calc(100%+0.5rem)] items-center gap-1 overflow-x-auto border-t border-gray-800 px-1 pt-2 lg:order-none lg:mx-0 lg:w-auto lg:border-0 lg:px-0 lg:pt-0">
         <a href="{% url 'rates:overview' %}"
            class="px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap
                   {% if request.resolver_match.url_name == 'overview' or request.resolver_match.url_name == 'root' %}
@@ -37,6 +56,15 @@
                     text-gray-400 hover:text-white hover:bg-gray-800
                   {% endif %}">
           Resumen
+        </a>
+        <a href="{% url 'rates:payments' %}"
+           class="px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap
+                  {% if request.resolver_match.url_name == 'payments' or request.resolver_match.url_name == 'payments_plan' or request.resolver_match.url_name == 'payment_plan_new' or request.resolver_match.url_name == 'payment_plan_create' or request.resolver_match.url_name == 'payment_plan_edit' %}
+                    bg-indigo-600 text-white font-semibold
+                  {% else %}
+                    text-gray-400 hover:text-white hover:bg-gray-800
+                  {% endif %}">
+          Vivienda
         </a>
         {% for p in all_pairs %}
         <a href="{% url 'rates:dashboard' p.slug %}"
@@ -52,7 +80,7 @@
       </div>
 
       {# Right side: refresh spinner + button (only on pair dashboards) + send alerts + logout #}
-      <div class="flex items-center gap-3 shrink-0">
+      <div class="hidden items-center gap-3 shrink-0 lg:flex">
         {% if pair %}
         <span id="refresh-spinner" class="htmx-indicator text-indigo-400 text-sm animate-spin">↻</span>
         <button
@@ -103,5 +131,12 @@
   <footer class="text-center text-gray-700 text-xs py-6">
     Datos de {{ footer_rate_source.provider }} &bull; {{ footer_rate_source.update_note }}
   </footer>
+  <script>
+    document.addEventListener('click', function (event) {
+      const input = event.target.closest('input[type="date"], input[type="month"]');
+      if (!input || typeof input.showPicker !== 'function') return;
+      try { input.showPicker(); } catch (_) { /* Native picker remains available. */ }
+    });
+  </script>
 </body>
 </html>

@@ -1,0 +1,18 @@
+{% load l10n %}
+{% if cub_preview_error %}
+<div class="rounded-xl border border-red-900 bg-red-950/30 px-3 py-2 text-xs text-red-300">{{ cub_preview_error }} <a href="{{ source_url }}" target="_blank" rel="noopener" class="underline">Abrir fuente</a></div>
+{% elif previews %}
+<div class="rounded-xl border border-indigo-900 bg-indigo-950/20 p-3">
+  <div class="flex items-center justify-between mb-2"><p class="text-xs text-indigo-300">Valores detectados</p><a href="{{ source_url }}" target="_blank" rel="noopener" class="text-[10px] text-gray-600 hover:text-gray-400">Ver fuente ↗</a></div>
+  <div class="space-y-2 max-h-48 overflow-auto">
+  {% for preview in previews %}
+    <form hx-post="{% url 'rates:cub_confirm' plan.pk %}" hx-target="#payments-workspace" hx-swap="outerHTML" class="flex items-center justify-between gap-3 bg-gray-950/70 rounded-lg px-3 py-2">
+      {% csrf_token %}<input type="hidden" name="applicable_month" value="{{ preview.item.applicable_month|date:'Y-m' }}"><input type="hidden" name="value" value="{{ preview.item.value|unlocalize }}"><input type="hidden" name="monthly_variation" value="{% if preview.item.monthly_variation is not None %}{{ preview.item.monthly_variation|unlocalize }}{% endif %}"><input type="hidden" name="source_url" value="{{ preview.item.source_url }}">
+      <div><p class="text-xs text-gray-300">{{ preview.item.applicable_month|date:'m/Y' }} · R$ {{ preview.item.value|floatformat:2 }}</p><p class="text-[10px] {% if preview.changed %}text-amber-500{% else %}text-gray-700{% endif %}">{% if preview.changed %}Valor diferente al guardado{% else %}Nuevo valor{% endif %}</p></div><button class="text-xs text-indigo-300 hover:text-indigo-200">Confirmar</button>
+    </form>
+  {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="rounded-xl border border-emerald-900 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-300">Los valores recientes ya están actualizados.</div>
+{% endif %}

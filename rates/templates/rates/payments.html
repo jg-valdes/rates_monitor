@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if editing_plan %}Editar {{ editing_plan.name }}{% else %}Vivienda{% endif %} — Monitor Cambiario{% endblock %}
+
+{% block content %}
+{% if plan %}
+  {% include 'rates/partials/payment_workspace.html' %}
+{% else %}
+<div class="max-w-5xl mx-auto">
+  <div class="mb-8 flex items-end justify-between gap-4">
+    <div>
+      <p class="text-xs uppercase tracking-[0.25em] text-indigo-400 mb-2">Plan de compra</p>
+      <h1 class="text-3xl md:text-4xl font-black tracking-tight text-white">{% if editing_plan %}Editar plan de compra{% else %}Configura tu vivienda{% endif %}</h1>
+      <p class="mt-2 text-gray-400 max-w-2xl">
+        {% if editing_plan %}Actualiza el contrato y sus series. Las obligaciones sin pagos se reajustarán automáticamente; las ya pagadas conservarán su información histórica.{% else %}Define la entrada, las cuotas, los refuerzos y la entrega de llaves. Antes de guardar verás el calendario completo que se usará para controlar los pagos.{% endif %}
+      </p>
+    </div>
+  </div>
+
+  <form method="post" action="{% if editing_plan %}{% url 'rates:payment_plan_edit' editing_plan.pk %}{% else %}{% url 'rates:payment_plan_create' %}{% endif %}"
+        class="space-y-5" novalidate>
+    {% csrf_token %}
+    {% if editing_plan and protected_obligation_count %}
+    <div class="rounded-xl border border-amber-900/70 bg-amber-950/20 px-4 py-3 flex items-start gap-3">
+      <span class="text-amber-400">◆</span>
+      <div><p class="text-sm font-semibold text-amber-200">{{ protected_obligation_count }} obligación{% if protected_obligation_count != 1 %}es{% endif %} protegida{% if protected_obligation_count != 1 %}s{% endif %}</p><p class="text-xs text-amber-500/80 mt-0.5">Tienen pagos o fueron cerradas. Este formulario no cambiará sus fechas, importes ni CUB; puedes corregirlas manualmente desde su menú.</p></div>
+    </div>
+    {% endif %}
+    {% if setup_form.non_field_errors %}
+    <div class="rounded-xl border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+      {{ setup_form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <section class="bg-gray-900 border border-gray-800 rounded-2xl p-5 md:p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <span class="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-300 flex items-center justify-center font-mono text-xs">01</span>
+        <div>
+          <h2 class="font-bold text-white">Contrato y CUB base</h2>
+          <p class="text-xs text-gray-500">El punto de partida contractual para todos los ajustes.</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {% include 'rates/partials/form_field.html' with field=setup_form.name %}
+        {% include 'rates/partials/form_field.html' with field=setup_form.contract_date %}
+        {% include 'rates/partials/form_field.html' with field=setup_form.base_cub_month %}
+        {% include 'rates/partials/form_field.html' with field=setup_form.base_cub_value prefix='R$' %}
+      </div>
+    </section>
+
+    <section class="bg-gray-900 border border-emerald-900/60 rounded-2xl p-5 md:p-6">
+      <label class="flex items-center justify-between gap-4 cursor-pointer mb-5">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-300 flex items-center justify-center font-mono text-xs">02</span>
+          <div><h2 class="font-bold text-white">Entrada de la vivienda</h2><p class="text-xs text-gray-500">Uno o varios plazos previos, independientes de las cuotas mensuales.</p></div>
+        </div>
+        <span class="inline-flex items-center gap-2 text-xs text-gray-400"><span>Incluir en el plan</span>{{ setup_form.down_payment_enabled }}</span>
+      </label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {% include 'rates/partials/form_field.html' with field=setup_form.down_payment_first_due_date %}
+        {% include 'rates/partials/form_field.html' with field=setup_form.down_payment_count %}
+        {% include 'rates/partials/form_field.html' with field=setup_form.down_payment_interval_months %}
+        {% include 'rates/partials/form_field.html' with field=setup_form.down_payment_amount prefix='R$' %}
+      </div>
+      <label class="mt-4 inline-flex items-center gap-2 text-sm text-gray-300">
+        {{ setup_form.down_payment_applies_cub }} {{ setup_form.down_payment_applies_cub.label }}
+      </label>
+    </section>
+
+    <section class="bg-gray-900 border border-gray-800 rounded-2xl p-5 md:p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <span class="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-300 flex items-center justify-center font-mono text-xs">03</span>
+        <div>
+          <h2 class="font-bold text-white">Cuotas mensuales</h2>
+          <p class="text-xs text-gray-500">La secuencia principal del contrato.</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {% include 'rates/partials/form_field.html' with field=setup_form.monthly_first_due_date %}
+        {% include 'rates/partials/form_field.html' with field=setup_form.monthly_count %}
+        {% include 'rates/partials/form_field.html' with field=setup_form.monthly_amount prefix='R$' %}
+      </div>
+      <label class="mt-4 inline-flex items-center gap-2 text-sm text-gray-300">
+        {{ setup_form.monthly_applies_cub }} {{ setup_form.monthly_applies_cub.label }}
+      </label>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <section class="bg-gray-900 border border-amber-900/60 rounded-2xl p-5 md:p-6">
+        <label class="flex items-center justify-between gap-4 cursor-pointer mb-5">
+          <div>
+            <h2 class="font-bold text-white">Refuerzos anuales</h2>
+            <p class="text-xs text-gray-500">Pagos especiales cada doce meses.</p>
+          </div>
+          <span class="inline-flex items-center gap-2 text-xs text-gray-400"><span>Incluir en el plan</span>{{ setup_form.reinforcement_enabled }}</span>
+        </label>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {% include 'rates/partials/form_field.html' with field=setup_form.reinforcement_first_due_date %}
+          {% include 'rates/partials/form_field.html' with field=setup_form.reinforcement_count %}
+          {% include 'rates/partials/form_field.html' with field=setup_form.reinforcement_amount prefix='R$' %}
+        </div>
+        <label class="mt-4 inline-flex items-center gap-2 text-sm text-gray-300">
+          {{ setup_form.reinforcement_applies_cub }} {{ setup_form.reinforcement_applies_cub.label }}
+        </label>
+      </section>
+
+      <section class="bg-gray-900 border border-indigo-900/60 rounded-2xl p-5 md:p-6">
+        <label class="flex items-center justify-between gap-4 cursor-pointer mb-5">
+          <div>
+            <h2 class="font-bold text-white">Entrega de llaves</h2>
+            <p class="text-xs text-gray-500">El hito final de la compra.</p>
+          </div>
+          <span class="inline-flex items-center gap-2 text-xs text-gray-400"><span>Incluir en el plan</span>{{ setup_form.keys_enabled }}</span>
+        </label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {% include 'rates/partials/form_field.html' with field=setup_form.keys_due_date %}
+          {% include 'rates/partials/form_field.html' with field=setup_form.keys_amount prefix='R$' %}
+        </div>
+        <label class="mt-4 inline-flex items-center gap-2 text-sm text-gray-300">
+          {{ setup_form.keys_applies_cub }} {{ setup_form.keys_applies_cub.label }}
+        </label>
+      </section>
+    </div>
+
+    {% if schedule_preview and not editing_plan %}
+    <section class="bg-gray-900 border border-indigo-700 rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+        <div>
+          <h2 class="font-bold text-white">Revisa el calendario</h2>
+          <p class="text-xs text-gray-500">{{ schedule_preview|length }} obligaciones serán creadas.</p>
+        </div>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-300">Vista previa</span>
+      </div>
+      <div class="max-h-72 overflow-auto">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 bg-gray-900 text-xs uppercase text-gray-600">
+            <tr><th class="px-5 py-3 text-left">Tipo</th><th class="px-5 py-3 text-left">Vence</th><th class="px-5 py-3 text-right">Base</th><th class="px-5 py-3 text-center">CUB</th></tr>
+          </thead>
+          <tbody class="divide-y divide-gray-800/70">
+          {% for kind, sequence, due_date, amount, applies_cub in schedule_preview %}
+            <tr>
+              <td class="px-5 py-3 text-gray-300">
+                {% if kind == 'DOWN_PAYMENT' %}Entrada #{{ sequence }}{% elif kind == 'MONTHLY' %}Cuota #{{ sequence }}{% elif kind == 'REINFORCEMENT' %}Refuerzo #{{ sequence }}{% else %}Entrega de llaves{% endif %}
+              </td>
+              <td class="px-5 py-3 font-mono text-gray-400">{{ due_date|date:'d/m/Y' }}</td>
+              <td class="px-5 py-3 text-right font-mono text-white">R$ {{ amount|floatformat:2 }}</td>
+              <td class="px-5 py-3 text-center">{% if applies_cub %}<span class="text-indigo-300">Sí</span>{% else %}<span class="text-gray-600">No</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+    <div class="flex justify-end gap-3">
+      {% if editing_plan %}
+      <a href="{% url 'rates:payments_plan' editing_plan.pk %}" class="px-5 py-2.5 rounded-xl text-gray-400 hover:text-white">Cancelar</a>
+      <button type="submit"
+              class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors">
+        Guardar y reajustar cuotas
+      </button>
+      {% else %}
+      <button type="submit" name="action" value="preview"
+              class="px-5 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold transition-colors">
+        Revisar calendario
+      </button>
+      {% if schedule_preview %}
+      <button type="submit" name="action" value="save"
+              class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors">
+        Crear plan de vivienda
+      </button>
+      {% endif %}
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

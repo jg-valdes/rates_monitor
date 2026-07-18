@@ -13,19 +13,19 @@ logger = logging.getLogger(__name__)
 _TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
 
 _SIGNAL_EMOJI = {
-    "STRONG BUY":   "🚀",
+    "STRONG BUY": "🚀",
     "MODERATE BUY": "📈",
-    "NEUTRAL":      "📊",
-    "DO NOT BUY":   "🛑",
+    "NEUTRAL": "📊",
+    "DO NOT BUY": "🛑",
 }
 _CONFIDENCE_EMOJI = {
-    "HIGH":   "🟢",
+    "HIGH": "🟢",
     "MEDIUM": "🟡",
-    "LOW":    "🔴",
+    "LOW": "🔴",
 }
 _MOMENTUM_EMOJI = {
-    "up":      "↗️",
-    "down":    "↘️",
+    "up": "↗️",
+    "down": "↘️",
     "neutral": "➡️",
 }
 
@@ -63,7 +63,9 @@ def _build_message(indicators: dict, decision: dict, pair_name: str) -> str:
     momentum_es = MOMENTUM_LABELS.get(momentum, momentum)
 
     deviation = indicators["deviation"]
-    deviation_emoji = "📉" if deviation > 0 else "📈"  # positive deviation = rate above MA = cheaper to buy now
+    deviation_emoji = (
+        "📉" if deviation > 0 else "📈"
+    )  # positive deviation = rate above MA = cheaper to buy now
 
     return (
         f"{signal_emoji} *{pair_name}* — {signal_es}\n"
