@@ -59,6 +59,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Prepare Compose environment
+        run: cp .env.example .env
+
       - name: Validate Compose configuration
         run: docker compose config -q
 
