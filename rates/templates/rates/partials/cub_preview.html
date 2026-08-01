@@ -16,19 +16,20 @@
     <label class="flex cursor-pointer items-start gap-3 rounded-lg border {% if preview.changed %}border-amber-900/60{% else %}border-gray-800{% endif %} bg-gray-950/70 px-3 py-3">
       <input type="checkbox" name="selected_month" value="{{ preview.item.applicable_month|date:'Y-m' }}" checked class="mt-1 rounded border-gray-700 bg-gray-900 text-indigo-500">
       <input type="hidden" name="value_{{ preview.item.applicable_month|date:'Y-m' }}" value="{{ preview.item.value|unlocalize }}">
-      <input type="hidden" name="variation_{{ preview.item.applicable_month|date:'Y-m' }}" value="{% if preview.item.monthly_variation is not None %}{{ preview.item.monthly_variation|unlocalize }}{% endif %}">
+      <input type="hidden" name="variation_{{ preview.item.applicable_month|date:'Y-m' }}" value="{% if preview.proposed_variation is not None %}{{ preview.proposed_variation|unlocalize }}{% endif %}">
       <input type="hidden" name="source_{{ preview.item.applicable_month|date:'Y-m' }}" value="{{ preview.item.source_url }}">
       <span class="min-w-0 flex-1">
         <span class="flex items-center justify-between gap-3">
           <strong class="text-xs text-gray-200">{{ preview.item.applicable_month|date:'m/Y' }}</strong>
-          <span class="text-[10px] {% if preview.changed %}text-amber-400{% else %}text-emerald-400{% endif %}">{% if preview.changed %}Actualización{% else %}Nuevo valor{% endif %}</span>
+          <span class="text-[10px] {% if preview.changed %}text-amber-400{% else %}text-emerald-400{% endif %}">{% if not preview.changed %}Nuevo valor{% elif preview.value_changed and preview.variation_changed %}Valor y variación{% elif preview.value_changed %}Valor CUB{% elif preview.current.monthly_variation is None %}Completar variación{% else %}Actualizar variación{% endif %}</span>
         </span>
         {% if preview.changed %}
         <span class="mt-2 grid grid-cols-2 gap-2 text-[10px]">
-          <span class="rounded bg-gray-900 px-2 py-1.5 text-gray-500">Guardado<br><strong class="font-mono text-gray-300">R$ {{ preview.current.value|floatformat:2 }}</strong>{% if preview.current.monthly_variation is not None %}<br>{{ preview.current.monthly_variation|floatformat:2 }}%{% endif %}</span>
-          <span class="rounded bg-indigo-950/60 px-2 py-1.5 text-indigo-400">Propuesto<br><strong class="font-mono text-indigo-200">R$ {{ preview.item.value|floatformat:2 }}</strong>{% if preview.item.monthly_variation is not None %}<br>{{ preview.item.monthly_variation|floatformat:2 }}%{% endif %}</span>
+          <span class="rounded bg-gray-900 px-2 py-1.5 text-gray-500">Guardado<br><strong class="font-mono text-gray-300">R$ {{ preview.current.value|floatformat:2 }}</strong><br>Variación: {% if preview.current.monthly_variation is not None %}{{ preview.current.monthly_variation|floatformat:2 }}%{% else %}sin dato{% endif %}</span>
+          <span class="rounded bg-indigo-950/60 px-2 py-1.5 text-indigo-400">Propuesto<br><strong class="font-mono text-indigo-200">R$ {{ preview.item.value|floatformat:2 }}</strong><br>Variación: {% if preview.proposed_variation is not None %}{{ preview.proposed_variation|floatformat:2 }}%{% else %}sin dato{% endif %}</span>
         </span>
-        {% if preview.value_changed %}<span class="mt-1 block text-[10px] {% if preview.delta >= 0 %}text-amber-400{% else %}text-emerald-400{% endif %}">Diferencia: {% if preview.delta >= 0 %}+{% endif %}R$ {{ preview.delta|floatformat:2 }} ({% if preview.delta_percent >= 0 %}+{% endif %}{{ preview.delta_percent|floatformat:2 }}%)</span>{% elif preview.variation_changed %}<span class="mt-1 block text-[10px] text-amber-400">Cambió la variación mensual publicada.</span>{% endif %}
+        {% if preview.value_changed %}<span class="mt-1 block text-[10px] {% if preview.delta >= 0 %}text-amber-400{% else %}text-emerald-400{% endif %}">Diferencia de valor: {% if preview.delta >= 0 %}+{% endif %}R$ {{ preview.delta|floatformat:2 }} ({% if preview.delta_percent >= 0 %}+{% endif %}{{ preview.delta_percent|floatformat:2 }}%)</span>{% endif %}
+        {% if preview.variation_changed %}<span class="mt-1 block text-[10px] text-amber-400">Variación: {% if preview.current.monthly_variation is not None %}{{ preview.current.monthly_variation|floatformat:2 }}%{% else %}sin dato{% endif %} → {% if preview.proposed_variation is not None %}{{ preview.proposed_variation|floatformat:2 }}%{% else %}sin dato{% endif %}</span>{% endif %}
         {% else %}
         <span class="mt-1 block font-mono text-xs text-gray-300">R$ {{ preview.item.value|floatformat:2 }}{% if preview.item.monthly_variation is not None %} · {{ preview.item.monthly_variation|floatformat:2 }}%{% endif %}</span>
         {% endif %}

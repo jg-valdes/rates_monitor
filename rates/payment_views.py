@@ -203,8 +203,11 @@ def cub_preview(request, plan_id):
         for item in found[:18]:
             current = existing.get(item.applicable_month)
             value_changed = current is not None and current.value != item.value
+            proposed_variation = item.monthly_variation
+            if proposed_variation is None and current is not None:
+                proposed_variation = current.monthly_variation
             variation_changed = (
-                current is not None and current.monthly_variation != item.monthly_variation
+                current is not None and current.monthly_variation != proposed_variation
             )
             if current is None or value_changed or variation_changed:
                 delta = item.value - current.value if current is not None else None
@@ -220,6 +223,7 @@ def cub_preview(request, plan_id):
                         "changed": current is not None,
                         "value_changed": value_changed,
                         "variation_changed": variation_changed,
+                        "proposed_variation": proposed_variation,
                         "delta": delta,
                         "delta_percent": delta_percent,
                     }

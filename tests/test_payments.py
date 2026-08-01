@@ -618,11 +618,78 @@ class TestPaymentWorkspace:
         assert preview["current"] == current
         assert preview["delta"] == Decimal("30.00")
         assert preview["delta_percent"] == Decimal("1.00")
+        assert preview["proposed_variation"] == Decimal("1.00")
         assert "Guardado" in body
         assert "Propuesto" in body
-        assert "Diferencia:" in body
+        assert "Diferencia de valor:" in body
         assert "Confirmar seleccionados" in body
         assert "Descartar revisión" in body
+
+    def test_same_value_with_new_variation_is_labeled_as_metadata_update(self, client):
+        plan, _ = _plan()
+        _cub(datetime.date(2026, 3, 1), "3028.45")
+        detected = SimpleNamespace(
+            applicable_month=datetime.date(2026, 3, 1),
+            reference_month=datetime.date(2026, 2, 1),
+            value=Decimal("3028.45"),
+            monthly_variation=Decimal("0.30"),
+            source_url="https://example.com/cub",
+        )
+
+        with patch("rates.payment_views.fetch_cub_history", return_value=[detected]):
+            response = client.get(reverse("rates:cub_preview", kwargs={"plan_id": plan.pk}))
+
+        preview = response.context["previews"][0]
+        body = response.content.decode()
+        assert preview["value_changed"] is False
+        assert preview["variation_changed"] is True
+        assert preview["proposed_variation"] == Decimal("0.30")
+        assert "Completar variación" in body
+        assert "Variación: sin dato" in body
+        assert "→ 0.30%" in body
+        assert "Diferencia de valor" not in body
+
+    def test_missing_proposed_variation_does_not_erase_saved_metadata(self, client):
+        plan, _ = _plan()
+        current = _cub(datetime.date(2026, 3, 1), "3028.45")
+        current.monthly_variation = Decimal("0.30")
+        current.save(update_fields=["monthly_variation"])
+        detected = SimpleNamespace(
+            applicable_month=datetime.date(2026, 3, 1),
+            reference_month=datetime.date(2026, 2, 1),
+            value=Decimal("3030.00"),
+            monthly_variation=None,
+            source_url="https://example.com/cub",
+        )
+
+        with patch("rates.payment_views.fetch_cub_history", return_value=[detected]):
+            response = client.get(reverse("rates:cub_preview", kwargs={"plan_id": plan.pk}))
+
+        preview = response.context["previews"][0]
+        body = response.content.decode()
+        assert preview["value_changed"] is True
+        assert preview["variation_changed"] is False
+        assert preview["proposed_variation"] == Decimal("0.30")
+        assert 'name="variation_2026-03" value="0.3000"' in body
+
+    def test_equal_decimals_with_different_scales_are_not_proposed(self, client):
+        plan, _ = _plan()
+        current = _cub(datetime.date(2026, 3, 1), "3028.45")
+        current.monthly_variation = Decimal("0.30")
+        current.save(update_fields=["monthly_variation"])
+        detected = SimpleNamespace(
+            applicable_month=datetime.date(2026, 3, 1),
+            reference_month=datetime.date(2026, 2, 1),
+            value=Decimal("3028.450000"),
+            monthly_variation=Decimal("0.3000"),
+            source_url="https://example.com/cub",
+        )
+
+        with patch("rates.payment_views.fetch_cub_history", return_value=[detected]):
+            response = client.get(reverse("rates:cub_preview", kwargs={"plan_id": plan.pk}))
+
+        assert response.context["previews"] == []
+        assert "Los valores recientes ya están actualizados" in response.content.decode()
 
     def test_batch_confirmation_saves_multiple_selected_months(self, client):
         plan, first = _plan()
