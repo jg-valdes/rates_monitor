@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('rates', '0005_purchase'),
+        ("rates", "0005_purchase"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='pairconfig',
-            name='alert_webhook_url',
+            model_name="pairconfig",
+            name="alert_webhook_url",
         ),
     ]

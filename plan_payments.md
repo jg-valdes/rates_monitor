@@ -1,5 +1,8 @@
 # CUB-Adjusted Property Payments
 
+**Status:** Implemented in PR #18. This document records the delivered scope and
+the assumptions that must remain true during future changes.
+
 ## Goal
 
 Add a dedicated **Vivienda** workspace for configuring a property purchase,
@@ -50,5 +53,5 @@ separate; the latest USD-BRL rate is used only for an informative USD estimate.
 - The contract uses non-desonerado CUB/2006 residential-medium values for Santa
   Catarina and BRL amounts.
 - Assisted imports require confirmation; there is no automatic scheduled save.
-- FX execution, accounting integration, bank fees, and payment alerts are out of
-  scope for this version.
+- FX execution, accounting integration, bank fees, and payment alerts remain out
+  of scope until they are deliberately promoted through the product roadmap.

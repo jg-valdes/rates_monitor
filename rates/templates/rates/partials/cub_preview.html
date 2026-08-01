@@ -2,17 +2,45 @@
 {% if cub_preview_error %}
 <div class="rounded-xl border border-red-900 bg-red-950/30 px-3 py-2 text-xs text-red-300">{{ cub_preview_error }} <a href="{{ source_url }}" target="_blank" rel="noopener" class="underline">Abrir fuente</a></div>
 {% elif previews %}
-<div class="rounded-xl border border-indigo-900 bg-indigo-950/20 p-3">
-  <div class="flex items-center justify-between mb-2"><p class="text-xs text-indigo-300">Valores detectados</p><a href="{{ source_url }}" target="_blank" rel="noopener" class="text-[10px] text-gray-600 hover:text-gray-400">Ver fuente ↗</a></div>
-  <div class="space-y-2 max-h-48 overflow-auto">
+<form hx-post="{% url 'rates:cub_confirm_batch' plan.pk %}" hx-target="#payments-workspace" hx-swap="outerHTML" class="rounded-xl border border-indigo-900 bg-indigo-950/20 p-3">
+  {% csrf_token %}
+  <div class="mb-3 flex items-center justify-between gap-3">
+    <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-indigo-300">
+      <input type="checkbox" checked onchange="this.form.querySelectorAll('[name=selected_month]').forEach(item => item.checked = this.checked)" class="rounded border-gray-700 bg-gray-950 text-indigo-500">
+      Seleccionar todos
+    </label>
+    <a href="{{ source_url }}" target="_blank" rel="noopener" class="text-[10px] text-gray-500 hover:text-gray-300">Ver fuente ↗</a>
+  </div>
+  <div class="max-h-72 space-y-2 overflow-auto">
   {% for preview in previews %}
-    <form hx-post="{% url 'rates:cub_confirm' plan.pk %}" hx-target="#payments-workspace" hx-swap="outerHTML" class="flex items-center justify-between gap-3 bg-gray-950/70 rounded-lg px-3 py-2">
-      {% csrf_token %}<input type="hidden" name="applicable_month" value="{{ preview.item.applicable_month|date:'Y-m' }}"><input type="hidden" name="value" value="{{ preview.item.value|unlocalize }}"><input type="hidden" name="monthly_variation" value="{% if preview.item.monthly_variation is not None %}{{ preview.item.monthly_variation|unlocalize }}{% endif %}"><input type="hidden" name="source_url" value="{{ preview.item.source_url }}">
-      <div><p class="text-xs text-gray-300">{{ preview.item.applicable_month|date:'m/Y' }} · R$ {{ preview.item.value|floatformat:2 }}</p><p class="text-[10px] {% if preview.changed %}text-amber-500{% else %}text-gray-700{% endif %}">{% if preview.changed %}Valor diferente al guardado{% else %}Nuevo valor{% endif %}</p></div><button class="text-xs text-indigo-300 hover:text-indigo-200">Confirmar</button>
-    </form>
+    <label class="flex cursor-pointer items-start gap-3 rounded-lg border {% if preview.changed %}border-amber-900/60{% else %}border-gray-800{% endif %} bg-gray-950/70 px-3 py-3">
+      <input type="checkbox" name="selected_month" value="{{ preview.item.applicable_month|date:'Y-m' }}" checked class="mt-1 rounded border-gray-700 bg-gray-900 text-indigo-500">
+      <input type="hidden" name="value_{{ preview.item.applicable_month|date:'Y-m' }}" value="{{ preview.item.value|unlocalize }}">
+      <input type="hidden" name="variation_{{ preview.item.applicable_month|date:'Y-m' }}" value="{% if preview.item.monthly_variation is not None %}{{ preview.item.monthly_variation|unlocalize }}{% endif %}">
+      <input type="hidden" name="source_{{ preview.item.applicable_month|date:'Y-m' }}" value="{{ preview.item.source_url }}">
+      <span class="min-w-0 flex-1">
+        <span class="flex items-center justify-between gap-3">
+          <strong class="text-xs text-gray-200">{{ preview.item.applicable_month|date:'m/Y' }}</strong>
+          <span class="text-[10px] {% if preview.changed %}text-amber-400{% else %}text-emerald-400{% endif %}">{% if preview.changed %}Actualización{% else %}Nuevo valor{% endif %}</span>
+        </span>
+        {% if preview.changed %}
+        <span class="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+          <span class="rounded bg-gray-900 px-2 py-1.5 text-gray-500">Guardado<br><strong class="font-mono text-gray-300">R$ {{ preview.current.value|floatformat:2 }}</strong>{% if preview.current.monthly_variation is not None %}<br>{{ preview.current.monthly_variation|floatformat:2 }}%{% endif %}</span>
+          <span class="rounded bg-indigo-950/60 px-2 py-1.5 text-indigo-400">Propuesto<br><strong class="font-mono text-indigo-200">R$ {{ preview.item.value|floatformat:2 }}</strong>{% if preview.item.monthly_variation is not None %}<br>{{ preview.item.monthly_variation|floatformat:2 }}%{% endif %}</span>
+        </span>
+        {% if preview.value_changed %}<span class="mt-1 block text-[10px] {% if preview.delta >= 0 %}text-amber-400{% else %}text-emerald-400{% endif %}">Diferencia: {% if preview.delta >= 0 %}+{% endif %}R$ {{ preview.delta|floatformat:2 }} ({% if preview.delta_percent >= 0 %}+{% endif %}{{ preview.delta_percent|floatformat:2 }}%)</span>{% elif preview.variation_changed %}<span class="mt-1 block text-[10px] text-amber-400">Cambió la variación mensual publicada.</span>{% endif %}
+        {% else %}
+        <span class="mt-1 block font-mono text-xs text-gray-300">R$ {{ preview.item.value|floatformat:2 }}{% if preview.item.monthly_variation is not None %} · {{ preview.item.monthly_variation|floatformat:2 }}%{% endif %}</span>
+        {% endif %}
+      </span>
+    </label>
   {% endfor %}
   </div>
-</div>
+  <div class="mt-3 flex items-center justify-end gap-3 border-t border-gray-800 pt-3">
+    <button type="button" onclick="document.getElementById('cub-assisted-preview').innerHTML = ''" class="text-xs text-gray-500 hover:text-gray-300">Descartar revisión</button>
+    <button class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500">Confirmar seleccionados</button>
+  </div>
+</form>
 {% else %}
 <div class="rounded-xl border border-emerald-900 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-300">Los valores recientes ya están actualizados.</div>
 {% endif %}

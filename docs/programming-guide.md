@@ -10,28 +10,35 @@ Conventions, design patterns, and guide for extending the project.
 rates_monitor/
 ├── config/                        # Django configuration (settings, urls, wsgi)
 ├── rates/                         # Single Django app
-│   ├── migrations/                # 0001–0005 (schema + data + Purchase)
-│   ├── services/                  # Pure business logic (no Django)
+│   ├── migrations/                # FX, quota, purchase, CUB, and payment schema
+│   ├── services/                  # Business logic and external-source adapters
 │   │   ├── fetcher.py             # AwesomeAPI data fetching per pair
 │   │   ├── oer_fetcher.py         # Open Exchange Rates fetcher (cross-rate math)
+│   │   ├── oer_quota.py           # Local request policy and accounting
+│   │   ├── market_calendar.py     # Weekend rate mirroring
 │   │   ├── indicators.py          # Technical indicator computation
 │   │   ├── decision.py            # Signal engine and capital allocation
 │   │   ├── cross_pair.py          # UYU → BRL route comparator
-│   │   └── alerts.py              # Webhook notifications
+│   │   ├── alerts.py              # Telegram notifications
+│   │   ├── cub_fetcher.py         # Assisted CUB extraction
+│   │   └── payment_calculations.py # Contract calculations
 │   ├── templatetags/
 │   │   └── rates_extras.py        # Custom template filters
 │   ├── management/commands/
-│   │   └── fetch_rates.py         # CLI command for cron (all pairs)
+│   │   ├── fetch_rates.py         # CLI rate refresh
+│   │   └── run_scheduler.py       # Optional standalone scheduler command
 │   ├── templates/rates/
 │   │   ├── login.html             # Access passcode form (standalone)
 │   │   ├── overview.html          # Summary page (route comparator + capital)
 │   │   ├── dashboard.html         # Per-pair dashboard
+│   │   ├── payments.html          # Property setup/workspace shell
 │   │   └── partials/              # HTMX fragments
 │   │       ├── stats.html         # Indicator/signal cards (auto-refresh)
 │   │       ├── config_form.html   # Per-pair configuration
 │   │       └── purchases.html     # Deployed capital (HTMX add/delete)
-│   ├── models.py                  # CurrencyPair, ExchangeRate, Purchase, PairConfig
-│   ├── views.py                   # All views + helpers
+│   ├── models.py                  # FX, quota, purchase, CUB, and payment domain
+│   ├── views.py                   # Rate and purchase views
+│   ├── payment_views.py           # Property contract/payment views
 │   ├── urls.py                    # Routes with lowercase slugs
 │   ├── middleware.py              # PasscodeMiddleware
 │   ├── context_processors.py     # Injects all_pairs into every template
@@ -46,12 +53,12 @@ rates_monitor/
 
 ## Design principles
 
-### 1. Separation of logic and framework
+### 1. Separate calculations from orchestration
 
-All business logic lives in `rates/services/`. Those modules are **pure Python
-functions**: they do not import Django, do not make queries, do not use `request`.
-This makes them easy to test and reuse from any context (views, management
-commands, scripts).
+Calculation modules such as `indicators.py`, `decision.py`, and
+`payment_calculations.py` are pure Python. Source and policy services may use
+HTTP or the ORM, but they never depend on an incoming Django request. Views own
+request validation, persistence orchestration, and template context.
 
 ```python
 # Correct — pure function, testable in isolation
@@ -145,6 +152,13 @@ updated, created, or removed to match the edited recurrence. Obligations with
 any payment history or an explicit settlement are protected from bulk changes;
 `calculation_base_cub_value` preserves the historical base even when the plan's
 base CUB later changes.
+
+CUB confirmation follows the same boundary: `_apply_exact_cub()` skips every
+obligation with an active payment or `settled_at`. Only the explicit manual
+obligation editor may change protected contractual history.
+
+Every `CubIndexValue` keeps its source URL. The current and historical source
+links must remain visible in the UI whenever CUB import or editing changes.
 
 ---
 
@@ -247,7 +261,7 @@ def send_test_alert(indicators, decision, config, pair_name: str) -> bool:
 - `check_and_send` — evaluates three conditions (strong-buy signal, deviation
   threshold, rate threshold) and calls `_send_telegram` for each triggered one.
   Network errors are logged but never re-raised, so they cannot interrupt the
-  cron flow.
+  scheduled refresh flow.
 - `send_test_alert` — sends the same message format as production alerts using
   live indicator data. Called by the per-pair **Enviar Alerta** button and the
   global **📤 Enviar** nav button (`send_all_alerts` view).
@@ -442,6 +456,9 @@ uv run ruff format .
 
 # Lint (and auto-fix what can be fixed)
 uv run ruff check --fix .
+
+# Verify formatting without changing files
+uv run ruff format --check .
 ```
 
 Configuration lives in `pyproject.toml` under `[tool.ruff]`. The selected rules
@@ -465,6 +482,33 @@ def test_upward_momentum():
 ```
 
 To test views with queries, use `@pytest.mark.django_db` with pytest-django fixtures.
+The complete local gate is:
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run manage.py check
+uv run manage.py makemigrations --check --dry-run
+uv run pytest --cov-fail-under=95
+docker compose config -q
+```
+
+GitHub Actions runs this gate for `develop` and `main` pushes and pull requests.
+The configured project coverage floor is 95%; raise it only when the full suite
+comfortably supports the stricter threshold.
+
+## Scheduler ownership
+
+Production uses one Gunicorn worker and one in-process APScheduler thread. The
+entrypoint exports `RUN_SCHEDULER=1` only after migrations; the setting defaults
+to false, so tests and management commands do not start jobs. `RatesConfig.ready()`
+checks that explicit flag and retains a module-level scheduler reference to avoid
+starting twice in the same process.
+
+`uv run manage.py run_scheduler` remains available for local scheduler testing.
+Never run it alongside the production container. Do not increase Gunicorn's
+worker count until scheduler ownership is redesigned or distributed locking is
+introduced.
 
 ---
 
@@ -485,6 +529,11 @@ in `settings.py`.
 | `TELEGRAM_CHAT_ID` | *(empty)* | Target Telegram chat/group/channel ID. |
 | `EXCHANGE_RATE_SOURCE` | `awesomeapi` | Rate data source: `awesomeapi` or `openexchangerates`. |
 | `OPENEXCHANGERATES_APP_ID` | *(empty)* | Required when `EXCHANGE_RATE_SOURCE=openexchangerates`. Get a free key at openexchangerates.org. |
+| `OER_MONTHLY_REQUEST_QUOTA` | `1000` | Local monthly quota used by the OER guard. |
+| `OER_TARGET_USAGE_RATIO` | `0.95` | Fraction of the monthly quota the app may target. |
+| `OER_MIN_REQUEST_INTERVAL_MINUTES` | `240` | Cooldown between non-forced OER requests. |
+| `OER_ALLOW_HISTORICAL` | `False` | Enables paid historical OER endpoints when explicitly set. |
+| `CUB_SOURCE_URL` | Sinduscon BC CUB page | Source displayed and used by assisted CUB previews. |
 | `DATA_DIR` | *(project root)* | Directory for `db.sqlite3`. Docker Compose sets this to `/app/data`. |
 
 When `DEBUG=False`, Django automatically sets `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`

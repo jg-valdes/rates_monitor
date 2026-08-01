@@ -1,4 +1,5 @@
 """Tests for rates/services/decision.py — pure functions, no DB needed."""
+
 from unittest.mock import MagicMock
 
 import pytest

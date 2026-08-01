@@ -22,6 +22,11 @@ urlpatterns = [
     path("payments/<int:plan_id>/cub/preview/", payment_views.cub_preview, name="cub_preview"),
     path("payments/<int:plan_id>/cub/confirm/", payment_views.cub_confirm, name="cub_confirm"),
     path(
+        "payments/<int:plan_id>/cub/confirm-batch/",
+        payment_views.cub_confirm_batch,
+        name="cub_confirm_batch",
+    ),
+    path(
         "payments/<int:plan_id>/obligations/<int:obligation_id>/pay/",
         payment_views.payment_add,
         name="payment_add",

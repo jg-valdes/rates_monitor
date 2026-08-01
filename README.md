@@ -25,8 +25,9 @@ Open **http://localhost:8000**.
 
 ## Production deployment
 
-A single Docker container runs gunicorn and django-crontab (built-in scheduler).
-Caddy is installed on the host as a reverse proxy with automatic HTTPS.
+One Docker container runs a single Gunicorn worker with a guarded APScheduler
+thread, sharing the same Django process and SQLite volume. Caddy runs on the
+host as a reverse proxy with automatic HTTPS.
 
 ```bash
 git clone <repo> /opt/rates-monitor
@@ -34,8 +35,8 @@ cd /opt/rates-monitor
 bash deploy/deploy.sh --setup
 ```
 
-The cron scheduler refreshes all pairs and sends the Telegram snapshot
-automatically at **07:00** and **12:30** server time.
+The scheduler refreshes all pairs and sends the Telegram snapshot automatically
+at **07:00** and **12:30 UTC on weekdays**, with a daily backfill at **02:00 UTC**.
 A ready-to-use Caddyfile template is provided at `deploy/Caddyfile`.
 
 → Full guide: [docs/deployment.md](docs/deployment.md)
@@ -49,7 +50,8 @@ A ready-to-use Caddyfile template is provided at `deploy/Caddyfile`.
 | [overview.md](overview.md) | Project overview, architecture, and current status |
 | [docs/user-guide.md](docs/user-guide.md) | App usage, signals, configuration |
 | [docs/programming-guide.md](docs/programming-guide.md) | Code structure, patterns, extension points |
-| [docs/deployment.md](docs/deployment.md) | Docker Compose, VPS, SSL, cron, backups |
+| [docs/deployment.md](docs/deployment.md) | Docker Compose, VPS, SSL, scheduler, backups |
+| [docs/product-roadmap.md](docs/product-roadmap.md) | Product hardening and SaaS evolution targets |
 
 ---
 
@@ -103,7 +105,7 @@ CUB_SOURCE_URL=https://www.sindusconbc.com.br/cub/ # assisted CUB preview
 
 ## Stack
 
-Python 3.14 · Django 6 · Gunicorn · django-crontab · python-decouple · Caddy · HTMX · Tailwind CSS · Chart.js · SQLite · Docker · [AwesomeAPI](https://economia.awesomeapi.com.br) (default, no key) · [Open Exchange Rates](https://openexchangerates.org) (optional)
+Python 3.14 · Django 6 · Gunicorn · APScheduler · python-decouple · Caddy · HTMX · Tailwind CSS · Chart.js · SQLite · Docker · [AwesomeAPI](https://economia.awesomeapi.com.br) (default, no key) · [Open Exchange Rates](https://openexchangerates.org) (optional)
 
 ## Screenshots
 

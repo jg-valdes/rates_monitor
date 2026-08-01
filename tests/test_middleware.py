@@ -1,4 +1,5 @@
 """Tests for rates/middleware.py — PasscodeMiddleware."""
+
 import pytest
 from django.core import signing
 from django.http import HttpResponse

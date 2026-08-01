@@ -6,8 +6,8 @@
 #   2. Create superuser if DJANGO_SUPERUSER_USERNAME is set (skips if already exists)
 #   3. Hand off to gunicorn (PID 1)
 #
-# Scheduled jobs (fetch_rates) are handled by the APScheduler background
-# thread that starts inside gunicorn via RatesConfig.ready().
+# APScheduler starts inside the single Gunicorn worker. The flag is exported
+# only after migrations and superuser setup so management commands stay inert.
 
 set -e
 
@@ -25,6 +25,7 @@ fi
 
 # 3. Start gunicorn as PID 1 so Docker signals are handled correctly
 log "Starting gunicorn..."
+export RUN_SCHEDULER=1
 exec uv run gunicorn config.wsgi:application \
     --bind 0.0.0.0:8000 \
     --workers 1 \

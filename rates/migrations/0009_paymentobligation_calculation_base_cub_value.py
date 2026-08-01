@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('rates', '0008_paymentseries_cubindexvalue_paymentobligation_and_more'),
+        ("rates", "0008_paymentseries_cubindexvalue_paymentobligation_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='paymentobligation',
-            name='calculation_base_cub_value',
+            model_name="paymentobligation",
+            name="calculation_base_cub_value",
             field=models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True),
         ),
     ]
