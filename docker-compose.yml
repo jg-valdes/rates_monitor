@@ -1,6 +1,6 @@
 services:
 
-  # ── Django app — gunicorn + APScheduler background thread ───────────────────
+  # One low-footprint container: Gunicorn plus one guarded APScheduler thread.
   web:
     build: .
     image: rates_app:web
@@ -16,7 +16,18 @@ services:
       # internet. A reverse proxy (e.g. Caddy) running on the host reaches
       # the app at localhost:8003.
       - "8003:8000"
-
+    healthcheck:
+      test:
+        - CMD
+        - uv
+        - run
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/login/', timeout=5)
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
 
 volumes:
   data:   # persistent SQLite database

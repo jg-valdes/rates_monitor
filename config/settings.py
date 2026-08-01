@@ -42,6 +42,10 @@ OER_MIN_REQUEST_INTERVAL_MINUTES = config(
 )
 OER_ALLOW_HISTORICAL = config("OER_ALLOW_HISTORICAL", default=False, cast=bool)
 
+# Start APScheduler only in the production Gunicorn process. The container
+# entrypoint exports this after migrations so management commands stay inert.
+RUN_SCHEDULER = config("RUN_SCHEDULER", default=False, cast=bool)
+
 # Official CUB-SC page used by the assisted payment-index preview. Values are
 # never saved without explicit confirmation in the UI.
 CUB_SOURCE_URL = config("CUB_SOURCE_URL", default="https://www.sindusconbc.com.br/cub/")

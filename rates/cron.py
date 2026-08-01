@@ -1,8 +1,4 @@
-"""
-Cron job wrappers registered in settings.CRONJOBS.
-Each function is a thin shell that calls the corresponding management command
-so django-crontab can reference them by dotted path.
-"""
+"""Scheduled jobs invoked by APScheduler."""
 
 import logging
 

@@ -5,9 +5,11 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+import requests
 from django.urls import reverse
 from django.utils import timezone
 
+from rates.forms import PaymentPlanSetupForm
 from rates.models import (
     CubIndexValue,
     PaymentObligation,
@@ -15,7 +17,7 @@ from rates.models import (
     PaymentTransaction,
     PropertyPurchasePlan,
 )
-from rates.services.cub_fetcher import CubFetchError, parse_cub_history
+from rates.services.cub_fetcher import CubFetchError, fetch_cub_history, parse_cub_history
 from rates.services.payment_calculations import (
     active_payment_total,
     add_months,
@@ -173,6 +175,44 @@ class TestCubParser:
         with pytest.raises(CubFetchError):
             parse_cub_history("<html>no index here</html>")
 
+    def test_skips_empty_future_month_without_stealing_the_next_value(self):
+        html = """
+        <h2>CUB/2006 - ANO 2026</h2>
+        <h3>CUB / Agosto 2026</h3><p>R$<br>variação %</p>
+        <h3>CUB / Julho 2026</h3><p>R$ 3.121,62<br>variação +0,82%</p>
+        <h3>CUB / Junho 2026</h3><p>R$ 3.096,25<br>variação +1,05%</p>
+        """
+
+        results = parse_cub_history(html)
+
+        assert [item.applicable_month for item in results] == [
+            datetime.date(2026, 7, 1),
+            datetime.date(2026, 6, 1),
+        ]
+        assert [item.value for item in results] == [Decimal("3121.62"), Decimal("3096.25")]
+
+    def test_fetch_preserves_the_exact_source_url(self):
+        response = SimpleNamespace(
+            text="<h3>CUB / Julho 2026</h3><p>R$ 3.121,62</p>",
+            raise_for_status=lambda: None,
+        )
+        source_url = "https://official.example/cub-history"
+        with patch("rates.services.cub_fetcher.requests.get", return_value=response) as get:
+            results = fetch_cub_history(source_url)
+
+        get.assert_called_once_with(source_url, timeout=15)
+        assert results[0].source_url == source_url
+
+    def test_fetch_wraps_network_failures(self):
+        with (
+            patch(
+                "rates.services.cub_fetcher.requests.get",
+                side_effect=requests.RequestException("timeout"),
+            ),
+            pytest.raises(CubFetchError, match="No se pudo consultar"),
+        ):
+            fetch_cub_history()
+
 
 @pytest.mark.django_db
 class TestPaymentPlanSetup:
@@ -245,6 +285,10 @@ class TestPaymentPlanSetup:
         assert response.status_code == 400
         assert "obligatorio" in response.content.decode()
 
+    def test_invalid_form_has_no_schedule_preview(self):
+        form = PaymentPlanSetupForm({})
+        assert form.schedule_preview() == []
+
 
 @pytest.mark.django_db
 class TestPaymentWorkspace:
@@ -256,10 +300,15 @@ class TestPaymentWorkspace:
         assert "Apartamento 301" in body
         assert "Vivienda" in body
         assert "data-mobile-nav" in body
-        assert 'order-3' in body
+        assert "order-3" in body
         assert "Variación de la cuota mensual" in body
         assert "Índice CUB-SC vigente" in body
         assert body.count("Consultar fuente") == 1
+        assert "URL consultada por el importador" in body
+        assert "https://www.sindusconbc.com.br/cub/" in body
+        assert 'href="https://example.com/cub"' in body
+        assert "Abre la publicación original" in body
+        assert "Ver fuente ↗" in body
         assert "Plan de cuotas" in body
         assert "Pagos registrados" in body
         assert "lg:col-span-8" in body
@@ -326,10 +375,13 @@ class TestPaymentWorkspace:
         body = response.content.decode()
         assert body.index("Pagos especiales") < body.index("Plan de cuotas")
         assert '<details class="group mb-5' in body
-        assert reverse(
-            "rates:special_payment_save",
-            kwargs={"plan_id": plan.pk, "obligation_id": entrance.pk},
-        ) in body
+        assert (
+            reverse(
+                "rates:special_payment_save",
+                kwargs={"plan_id": plan.pk, "obligation_id": entrance.pk},
+            )
+            in body
+        )
         assert entrance not in [row["obligation"] for row in response.context["monthly_rows"]]
 
         payment_response = client.post(
@@ -399,6 +451,51 @@ class TestPaymentWorkspace:
         assert response.status_code == 302
         assert first.adjusted_amount == Decimal("1010.00")
         assert first.locked_cub_value == Decimal("3030.00")
+
+    def test_cub_update_never_changes_an_obligation_with_an_active_payment(self, client):
+        plan, first = _plan()
+        PaymentTransaction.objects.create(
+            obligation=first,
+            paid_on=datetime.date(2026, 2, 5),
+            amount=Decimal("100.00"),
+        )
+
+        response = client.post(
+            reverse("rates:cub_add", kwargs={"plan_id": plan.pk}),
+            {
+                "applicable_month": "2026-02",
+                "value": "3030.00",
+                "source_url": "https://example.com/cub",
+            },
+        )
+
+        first.refresh_from_db()
+        assert response.status_code == 302
+        assert first.locked_cub is None
+        assert first.locked_cub_value is None
+        assert first.adjusted_amount is None
+
+    def test_cub_update_never_changes_a_manually_settled_obligation(self, client):
+        plan, first = _plan()
+        first.settled_at = timezone.now()
+        first.final_amount_override = Decimal("995.00")
+        first.save(update_fields=["settled_at", "final_amount_override"])
+
+        response = client.post(
+            reverse("rates:cub_add", kwargs={"plan_id": plan.pk}),
+            {
+                "applicable_month": "2026-02",
+                "value": "3030.00",
+                "source_url": "https://example.com/cub",
+            },
+        )
+
+        first.refresh_from_db()
+        assert response.status_code == 302
+        assert first.final_amount_override == Decimal("995.00")
+        assert first.locked_cub is None
+        assert first.locked_cub_value is None
+        assert first.adjusted_amount is None
 
     def test_adds_partial_then_full_payment(self, client):
         plan, first = _plan()
@@ -498,6 +595,164 @@ class TestPaymentWorkspace:
         assert "Confirmar" in body
         assert 'value="3030.00"' in body
         assert 'value="3030.000000"' not in body
+        assert CubIndexValue.objects.count() == before
+
+    def test_assisted_preview_compares_saved_and_proposed_values(self, client):
+        plan, _ = _plan()
+        current = _cub(datetime.date(2026, 2, 1), "3000.00")
+        current.monthly_variation = Decimal("0.50")
+        current.save(update_fields=["monthly_variation"])
+        detected = SimpleNamespace(
+            applicable_month=datetime.date(2026, 2, 1),
+            reference_month=datetime.date(2026, 1, 1),
+            value=Decimal("3030.00"),
+            monthly_variation=Decimal("1.00"),
+            source_url="https://example.com/cub",
+        )
+
+        with patch("rates.payment_views.fetch_cub_history", return_value=[detected]):
+            response = client.get(reverse("rates:cub_preview", kwargs={"plan_id": plan.pk}))
+
+        preview = response.context["previews"][0]
+        body = response.content.decode()
+        assert preview["current"] == current
+        assert preview["delta"] == Decimal("30.00")
+        assert preview["delta_percent"] == Decimal("1.00")
+        assert preview["proposed_variation"] == Decimal("1.00")
+        assert "Guardado" in body
+        assert "Propuesto" in body
+        assert "Diferencia de valor:" in body
+        assert "Confirmar seleccionados" in body
+        assert "Descartar revisión" in body
+
+    def test_same_value_with_new_variation_is_labeled_as_metadata_update(self, client):
+        plan, _ = _plan()
+        _cub(datetime.date(2026, 3, 1), "3028.45")
+        detected = SimpleNamespace(
+            applicable_month=datetime.date(2026, 3, 1),
+            reference_month=datetime.date(2026, 2, 1),
+            value=Decimal("3028.45"),
+            monthly_variation=Decimal("0.30"),
+            source_url="https://example.com/cub",
+        )
+
+        with patch("rates.payment_views.fetch_cub_history", return_value=[detected]):
+            response = client.get(reverse("rates:cub_preview", kwargs={"plan_id": plan.pk}))
+
+        preview = response.context["previews"][0]
+        body = response.content.decode()
+        assert preview["value_changed"] is False
+        assert preview["variation_changed"] is True
+        assert preview["proposed_variation"] == Decimal("0.30")
+        assert "Completar variación" in body
+        assert "Variación: sin dato" in body
+        assert "→ 0.30%" in body
+        assert "Diferencia de valor" not in body
+
+    def test_missing_proposed_variation_does_not_erase_saved_metadata(self, client):
+        plan, _ = _plan()
+        current = _cub(datetime.date(2026, 3, 1), "3028.45")
+        current.monthly_variation = Decimal("0.30")
+        current.save(update_fields=["monthly_variation"])
+        detected = SimpleNamespace(
+            applicable_month=datetime.date(2026, 3, 1),
+            reference_month=datetime.date(2026, 2, 1),
+            value=Decimal("3030.00"),
+            monthly_variation=None,
+            source_url="https://example.com/cub",
+        )
+
+        with patch("rates.payment_views.fetch_cub_history", return_value=[detected]):
+            response = client.get(reverse("rates:cub_preview", kwargs={"plan_id": plan.pk}))
+
+        preview = response.context["previews"][0]
+        body = response.content.decode()
+        assert preview["value_changed"] is True
+        assert preview["variation_changed"] is False
+        assert preview["proposed_variation"] == Decimal("0.30")
+        assert 'name="variation_2026-03" value="0.3000"' in body
+
+    def test_equal_decimals_with_different_scales_are_not_proposed(self, client):
+        plan, _ = _plan()
+        current = _cub(datetime.date(2026, 3, 1), "3028.45")
+        current.monthly_variation = Decimal("0.30")
+        current.save(update_fields=["monthly_variation"])
+        detected = SimpleNamespace(
+            applicable_month=datetime.date(2026, 3, 1),
+            reference_month=datetime.date(2026, 2, 1),
+            value=Decimal("3028.450000"),
+            monthly_variation=Decimal("0.3000"),
+            source_url="https://example.com/cub",
+        )
+
+        with patch("rates.payment_views.fetch_cub_history", return_value=[detected]):
+            response = client.get(reverse("rates:cub_preview", kwargs={"plan_id": plan.pk}))
+
+        assert response.context["previews"] == []
+        assert "Los valores recientes ya están actualizados" in response.content.decode()
+
+    def test_batch_confirmation_saves_multiple_selected_months(self, client):
+        plan, first = _plan()
+        second = PaymentObligation.objects.get(series__plan=plan, sequence=2)
+
+        response = client.post(
+            reverse("rates:cub_confirm_batch", kwargs={"plan_id": plan.pk}),
+            {
+                "selected_month": ["2026-02", "2026-03"],
+                "value_2026-02": "3030.00",
+                "variation_2026-02": "1.00",
+                "source_2026-02": "https://example.com/cub",
+                "value_2026-03": "3060.00",
+                "variation_2026-03": "0.99",
+                "source_2026-03": "https://example.com/cub",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+        february = CubIndexValue.objects.get(applicable_month=datetime.date(2026, 2, 1))
+        march = CubIndexValue.objects.get(applicable_month=datetime.date(2026, 3, 1))
+        assert response.status_code == 200
+        assert february.value == Decimal("3030.00")
+        assert march.value == Decimal("3060.00")
+        assert first.adjusted_amount == Decimal("1010.00")
+        assert second.adjusted_amount == Decimal("1020.00")
+
+    def test_batch_confirmation_leaves_unselected_proposals_unchanged(self, client):
+        plan, _ = _plan()
+        february = _cub(datetime.date(2026, 2, 1), "3000.00")
+
+        response = client.post(
+            reverse("rates:cub_confirm_batch", kwargs={"plan_id": plan.pk}),
+            {
+                "selected_month": ["2026-03"],
+                "value_2026-02": "3030.00",
+                "source_2026-02": "https://example.com/cub",
+                "value_2026-03": "3060.00",
+                "source_2026-03": "https://example.com/cub",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        february.refresh_from_db()
+        march = CubIndexValue.objects.get(applicable_month=datetime.date(2026, 3, 1))
+        assert response.status_code == 200
+        assert february.value == Decimal("3000.00")
+        assert march.value == Decimal("3060.00")
+
+    def test_batch_confirmation_requires_a_selection(self, client):
+        plan, _ = _plan()
+        before = CubIndexValue.objects.count()
+
+        response = client.post(
+            reverse("rates:cub_confirm_batch", kwargs={"plan_id": plan.pk}),
+            {},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 200
+        assert "Selecciona al menos un valor" in response.content.decode()
         assert CubIndexValue.objects.count() == before
 
     def test_assisted_confirmation_accepts_rendered_decimal_values(self, client):
@@ -616,9 +871,7 @@ class TestPaymentPlanEdit:
         PaymentTransaction.objects.create(
             obligation=paid, paid_on=datetime.date(2025, 10, 10), amount=Decimal("12000.00")
         )
-        payload.update(
-            down_payment_first_due_date="2025-11-20", down_payment_amount="13000.00"
-        )
+        payload.update(down_payment_first_due_date="2025-11-20", down_payment_amount="13000.00")
         client.post(reverse("rates:payment_plan_edit", kwargs={"plan_id": plan.pk}), payload)
         paid.refresh_from_db()
         second = entrance.obligations.get(sequence=2)

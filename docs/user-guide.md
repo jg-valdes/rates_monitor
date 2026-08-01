@@ -105,7 +105,16 @@ base amount × CUB applicable to the due month ÷ contract base CUB
 The result is rounded to BRL cents. When the exact future month is not stored,
 the page uses the latest verified CUB only as a **provisional** forecast. Add a
 value manually or use **Consultar fuente** to preview values from Sinduscon BC;
-assisted values are saved only after confirmation.
+assisted values are saved only after confirmation. The card always displays the
+exact source URL used for the current value, and every stored value in
+**Gestionar valores CUB** has its own **Ver fuente** link for manual comparison.
+The assisted review selects all detected months by default so they can be
+confirmed in one request. Existing months show the saved and proposed values,
+monthly variations, and the absolute and percentage difference. Uncheck any
+proposal you want to decline, or discard the complete review without saving.
+Confirming a new or corrected CUB never recalculates an obligation that already
+has an active payment or was explicitly closed. Historical obligations can only
+be changed through their manual editor.
 
 ### Recording payments
 
@@ -309,17 +318,20 @@ Each Telegram message contains:
 
 ## Daily automation
 
-To keep data up to date without manual intervention, configure cron jobs like this:
+The production container starts one guarded APScheduler thread inside its single
+Gunicorn worker. It refreshes all pairs and sends the same Telegram snapshot as
+the **📤 Enviar** button at 07:00 and 12:30 UTC, Monday through Friday. A 90-day
+safety backfill runs every day at 02:00 UTC.
+
+For local testing, run the scheduler in its own terminal:
 
 ```bash
-# Refresh all pairs and send the same Telegram snapshot as the "📤 Enviar" button
-0 7 * * 1-5 cd /path/to/project && uv run manage.py fetch_rates --days 3 --no-alerts
-30 12 * * 1-5 cd /path/to/project && uv run manage.py fetch_rates --days 3 --no-alerts
+uv run manage.py run_scheduler
 ```
 
-In Docker deployment this schedule is already configured through `django-crontab`.
-The `--days 3` option fetches the last 3 days, ensuring no rate is missed due
-to timezone differences.
+Do not run the standalone command while the production container is running.
+Production scheduling is enabled only after migrations through the private
+`RUN_SCHEDULER` runtime flag.
 
 ### Open Exchange Rates quota strategy
 
@@ -441,8 +453,10 @@ No. It calculates gross rates directly from the API rates. Your bank's or
 exchange house's fees may change the actual outcome.
 
 **Can I use PostgreSQL instead of SQLite?**
-Yes. Change the `DATABASES` variable in `config/settings.py`. There are no
-SQLite-specific queries in the code.
+Not as a one-line configuration change. SQLite is the supported database for
+the current single-owner deployment. Move to PostgreSQL as a planned migration
+when concurrent users, multiple hosts, tenant isolation, reporting, or stricter
+recovery targets require it; see the product roadmap.
 
 **Can I add more pairs?**
 Yes. See the programming guide — it can be done from the admin panel or with a

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # deploy.sh — initial VPS setup + subsequent updates for rates-monitor.
 #
-# Architecture: single Docker Compose service (web) that runs gunicorn +
-# django-crontab inside one container. Caddy is installed separately on the
-# host as a reverse proxy (see deploy/Caddyfile and docs/despliegue.md).
+# Architecture: one Docker Compose web service runs one Gunicorn worker and one
+# guarded APScheduler thread. Caddy runs on the host as a reverse proxy (see
+# deploy/Caddyfile and docs/deployment.md).
 #
 # Usage:
 #   First deploy:   bash deploy/deploy.sh --setup
@@ -64,7 +64,7 @@ log "Building Docker image..."
 docker compose build --pull
 
 # ── 4. Start the service ──────────────────────────────────────────────────────
-# The entrypoint runs migrations + crontab add before gunicorn starts.
+# The entrypoint applies migrations, then enables APScheduler only for Gunicorn.
 log "Starting web service..."
 docker compose up -d
 
@@ -86,8 +86,8 @@ if $SETUP; then
     log "Fetching last 90 days of rates for all pairs..."
     docker exec -it rates_web uv run manage.py fetch_rates --days 90 --no-alerts
     log ""
-    log "Cron jobs installed inside the container:"
-    docker exec -it exec web uv run manage.py crontab show
+    log "Application service status:"
+    docker compose ps web
 fi
 
 log "──────────────────────────────────────────────────────────"
@@ -95,7 +95,7 @@ log "Deployment complete. Service: $(docker compose ps --services)"
 if $SETUP; then
     log ""
     log "Next steps:"
-    log "  1. Install Caddy on the host (see docs/despliegue.md § Caddy)."
+    log "  1. Install Caddy on the host (see docs/deployment.md § Caddy)."
     log "  2. Copy deploy/Caddyfile to /etc/caddy/Caddyfile."
     log "  3. Replace YOUR_DOMAIN in the Caddyfile with your actual domain."
     log "  4. systemctl reload caddy"

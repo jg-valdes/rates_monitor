@@ -36,9 +36,7 @@ class PaymentPlanSetupForm(forms.Form):
     down_payment_first_due_date = forms.DateField(
         label="Primer vencimiento", required=False, widget=date_widget()
     )
-    down_payment_count = forms.IntegerField(
-        label="Cantidad de plazos", min_value=1, required=False
-    )
+    down_payment_count = forms.IntegerField(label="Cantidad de plazos", min_value=1, required=False)
     down_payment_interval_months = forms.IntegerField(
         label="Frecuencia en meses", min_value=1, required=False, initial=1
     )

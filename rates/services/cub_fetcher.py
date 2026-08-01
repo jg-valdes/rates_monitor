@@ -61,15 +61,24 @@ def parse_cub_history(html: str, source_url: str = DEFAULT_CUB_SOURCE_URL) -> li
     text = " ".join(parser.parts)
     standard_text = re.split(r"CUB\s*/?\s*Desonerado", text, maxsplit=1, flags=re.IGNORECASE)[0]
     month_names = "|".join(MONTHS)
-    pattern = re.compile(
-        rf"CUB\s*/\s*({month_names})\s*(?:de|/)?\s*(20\d{{2}})"
-        rf".{{0,180}}?R\$\s*([\d.]+,\d{{2}})"
-        rf"(?:.{{0,100}}?varia(?:ção|cao)\s*([+\-–]?\s*[\d.,]+)\s*%)?",
+    heading_pattern = re.compile(
+        rf"CUB\s*/\s*({month_names})\s*(?:de|/)?\s*(20\d{{2}})",
         re.IGNORECASE,
     )
+    headings = list(heading_pattern.finditer(standard_text))
     previews = []
-    for match in pattern.finditer(standard_text):
-        month_name, year, raw_value, raw_variation = match.groups()
+    for index, heading in enumerate(headings):
+        block_end = headings[index + 1].start() if index + 1 < len(headings) else len(standard_text)
+        block = standard_text[heading.end() : block_end]
+        value_match = re.search(r"R\$\s*([\d.]+,\d{2})", block, flags=re.IGNORECASE)
+        if value_match is None:
+            continue
+        variation_match = re.search(
+            r"varia(?:ção|cao)\s*([+\-–]?\s*[\d.,]+)\s*%", block, flags=re.IGNORECASE
+        )
+        month_name, year = heading.groups()
+        raw_value = value_match.group(1)
+        raw_variation = variation_match.group(1) if variation_match else None
         applicable = datetime.date(int(year), MONTHS[month_name.lower()], 1)
         variation = None
         if raw_variation:

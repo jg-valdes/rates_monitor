@@ -168,6 +168,11 @@ def cub_add(request, plan_id):
         return _render_workspace(
             request, plan, cub_form=form, status=_validation_error_status(request)
         )
+    _save_cub(plan, form)
+    return _render_or_redirect(request, plan)
+
+
+def _save_cub(plan, form):
     data = form.cleaned_data
     cub, _ = CubIndexValue.objects.update_or_create(
         series=plan.cub_series,
@@ -181,7 +186,7 @@ def cub_add(request, plan_id):
         },
     )
     _apply_exact_cub(plan, cub)
-    return _render_or_redirect(request, plan)
+    return cub
 
 
 @require_http_methods(["GET"])
@@ -197,8 +202,32 @@ def cub_preview(request, plan_id):
         previews = []
         for item in found[:18]:
             current = existing.get(item.applicable_month)
-            if current is None or current.value != item.value:
-                previews.append({"item": item, "changed": current is not None})
+            value_changed = current is not None and current.value != item.value
+            proposed_variation = item.monthly_variation
+            if proposed_variation is None and current is not None:
+                proposed_variation = current.monthly_variation
+            variation_changed = (
+                current is not None and current.monthly_variation != proposed_variation
+            )
+            if current is None or value_changed or variation_changed:
+                delta = item.value - current.value if current is not None else None
+                delta_percent = (
+                    (delta / current.value * Decimal("100")).quantize(Decimal("0.01"))
+                    if current is not None and current.value
+                    else None
+                )
+                previews.append(
+                    {
+                        "item": item,
+                        "current": current,
+                        "changed": current is not None,
+                        "value_changed": value_changed,
+                        "variation_changed": variation_changed,
+                        "proposed_variation": proposed_variation,
+                        "delta": delta,
+                        "delta_percent": delta_percent,
+                    }
+                )
         context = {"plan": plan, "previews": previews, "source_url": source_url}
     except CubFetchError as exc:
         context = {"plan": plan, "cub_preview_error": str(exc), "source_url": source_url}
@@ -208,6 +237,50 @@ def cub_preview(request, plan_id):
 @require_http_methods(["POST"])
 def cub_confirm(request, plan_id):
     return cub_add(request, plan_id)
+
+
+@require_http_methods(["POST"])
+def cub_confirm_batch(request, plan_id):
+    plan = get_object_or_404(PropertyPurchasePlan, pk=plan_id)
+    source_url = getattr(settings, "CUB_SOURCE_URL", DEFAULT_CUB_SOURCE_URL)
+    selected_months = list(dict.fromkeys(request.POST.getlist("selected_month")))
+    if not selected_months:
+        return render(
+            request,
+            "rates/partials/cub_preview.html",
+            {
+                "plan": plan,
+                "cub_preview_error": "Selecciona al menos un valor para confirmar.",
+                "source_url": source_url,
+            },
+        )
+
+    forms = []
+    for month in selected_months[:18]:
+        form = CubIndexValueForm(
+            {
+                "applicable_month": month,
+                "value": request.POST.get(f"value_{month}", ""),
+                "monthly_variation": request.POST.get(f"variation_{month}", ""),
+                "source_url": request.POST.get(f"source_{month}", source_url),
+            }
+        )
+        if not form.is_valid():
+            return render(
+                request,
+                "rates/partials/cub_preview.html",
+                {
+                    "plan": plan,
+                    "cub_preview_error": f"El valor propuesto para {month} no es válido.",
+                    "source_url": source_url,
+                },
+            )
+        forms.append(form)
+
+    with transaction.atomic():
+        for form in forms:
+            _save_cub(plan, form)
+    return _render_or_redirect(request, plan)
 
 
 @require_http_methods(["POST"])
@@ -388,13 +461,9 @@ def _plan_form_initial(plan):
         "base_cub_month": plan.base_cub.applicable_month,
         "base_cub_value": plan.base_cub_value,
         "down_payment_enabled": down_payment is not None,
-        "down_payment_first_due_date": (
-            down_payment.first_due_date if down_payment else None
-        ),
+        "down_payment_first_due_date": (down_payment.first_due_date if down_payment else None),
         "down_payment_count": down_payment.occurrence_count if down_payment else None,
-        "down_payment_interval_months": (
-            down_payment.interval_months if down_payment else 1
-        ),
+        "down_payment_interval_months": (down_payment.interval_months if down_payment else 1),
         "down_payment_amount": down_payment.base_amount if down_payment else None,
         "down_payment_applies_cub": down_payment.applies_cub if down_payment else False,
         "monthly_first_due_date": monthly.first_due_date,
@@ -569,7 +638,7 @@ def _apply_exact_cub(plan, cub):
     ).prefetch_related("transactions")
     for obligation in obligations:
         has_payments = any(item.voided_at is None for item in obligation.transactions.all())
-        if has_payments and obligation.adjusted_amount is not None:
+        if has_payments or obligation.settled_at is not None:
             continue
         obligation.locked_cub = cub
         obligation.locked_cub_value = cub.value
@@ -581,8 +650,6 @@ def _apply_exact_cub(plan, cub):
         obligation.save(
             update_fields=["locked_cub", "locked_cub_value", "adjusted_amount", "updated_at"]
         )
-        if has_payments:
-            _auto_settle(obligation, plan)
 
 
 def _auto_settle(obligation, plan):
@@ -722,6 +789,7 @@ def _workspace_context(plan, **overrides):
     progress_percent = round(settled_count / len(rows) * 100) if rows else 0
     monthly_rows = [row for row in rows if row["kind"] == PaymentSeries.Kind.MONTHLY]
     special_rows = [row for row in rows if row["kind"] != PaymentSeries.Kind.MONTHLY]
+    cub_fetch_url = getattr(settings, "CUB_SOURCE_URL", DEFAULT_CUB_SOURCE_URL)
     context = {
         "plan": plan,
         "plans": PropertyPurchasePlan.objects.filter(archived_at__isnull=True),
@@ -744,6 +812,8 @@ def _workspace_context(plan, **overrides):
         "progress_percent": progress_percent,
         "cub_values": cub_values[:24],
         "latest_cub": latest_cub,
+        "cub_fetch_url": cub_fetch_url,
+        "cub_source_url": latest_cub.source_url or cub_fetch_url,
         "chart_data": json.dumps(chart_data),
         "chart_start": chart_start,
         "chart_end": chart_end,
