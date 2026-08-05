@@ -109,9 +109,7 @@ def parse_cub_history(html: str, source_url: str = DEFAULT_CUB_SOURCE_URL) -> li
     return sorted(unique.values(), key=lambda item: item.applicable_month, reverse=True)
 
 
-def parse_current_cub(
-    html: str, source_url: str = DEFAULT_CUB_CURRENT_SOURCE_URL
-) -> CubPreview:
+def parse_current_cub(html: str, source_url: str = DEFAULT_CUB_CURRENT_SOURCE_URL) -> CubPreview:
     text = _page_text(html)
     residential_match = re.search(
         r"Residencial\s+M[ée]dio(?P<block>.*?)(?:Comercial\s+M[ée]dio|$)",
@@ -136,9 +134,7 @@ def parse_current_cub(
     value_match = re.search(r"R\$\s*([\d.]+,\d{2})", block, flags=re.IGNORECASE)
     variation_match = re.search(r"([+\-–]?\s*[\d.,]+)\s*%", block)
     if reference_match is None or applicable_match is None or value_match is None:
-        raise CubFetchError(
-            'El bloque "Residencial Médio" no contiene un mes y valor CUB válidos.'
-        )
+        raise CubFetchError('El bloque "Residencial Médio" no contiene un mes y valor CUB válidos.')
 
     reference_month, reference_year = reference_match.groups()
     applicable_month, applicable_year = applicable_match.groups()
@@ -148,9 +144,7 @@ def parse_current_cub(
         variation = _br_decimal(normalized.lstrip("+"))
     return CubPreview(
         reference_month=datetime.date(int(reference_year), _month_number(reference_month), 1),
-        applicable_month=datetime.date(
-            int(applicable_year), _month_number(applicable_month), 1
-        ),
+        applicable_month=datetime.date(int(applicable_year), _month_number(applicable_month), 1),
         value=_br_decimal(value_match.group(1)),
         monthly_variation=variation,
         source_url=source_url,
@@ -180,9 +174,7 @@ def fetch_cub_history(
     if current_url is None:
         return history
 
-    current = parse_current_cub(
-        _fetch_html(current_url, bypass_cache=True), source_url=current_url
-    )
+    current = parse_current_cub(_fetch_html(current_url, bypass_cache=True), source_url=current_url)
     combined = {item.applicable_month: item for item in history}
     combined[current.applicable_month] = current
     return sorted(combined.values(), key=lambda item: item.applicable_month, reverse=True)
