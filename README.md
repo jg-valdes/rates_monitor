@@ -98,7 +98,8 @@ EXCHANGE_RATE_SOURCE=awesomeapi          # default — free, no key needed
 # OER_TARGET_USAGE_RATIO=0.95           # stay under 95% of monthly quota
 # OER_MIN_REQUEST_INTERVAL_MINUTES=240  # block repeated manual refresh spam
 # OER_ALLOW_HISTORICAL=False            # keep False on the free plan
-CUB_SOURCE_URL=https://www.sindusconbc.com.br/cub/ # assisted CUB preview
+CUB_SOURCE_URL=https://www.sindusconbc.com.br/cub/ # historical CUB values
+CUB_CURRENT_SOURCE_URL=https://sinduscon-fpolis.org.br/servico/cub-mensal/ # current month
 ```
 
 ---

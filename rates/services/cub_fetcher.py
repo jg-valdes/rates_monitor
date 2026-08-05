@@ -1,5 +1,6 @@
 import datetime
 import re
+import time
 from dataclasses import dataclass
 from decimal import Decimal
 from html.parser import HTMLParser
@@ -9,6 +10,7 @@ import requests
 from rates.services.payment_calculations import add_months
 
 DEFAULT_CUB_SOURCE_URL = "https://www.sindusconbc.com.br/cub/"
+DEFAULT_CUB_CURRENT_SOURCE_URL = "https://sinduscon-fpolis.org.br/servico/cub-mensal/"
 
 MONTHS = {
     "janeiro": 1,
@@ -55,10 +57,18 @@ def _br_decimal(value: str) -> Decimal:
     return Decimal(value.replace(".", "").replace(",", "."))
 
 
-def parse_cub_history(html: str, source_url: str = DEFAULT_CUB_SOURCE_URL) -> list[CubPreview]:
+def _month_number(value: str) -> int:
+    return int(value) if value.isdigit() else MONTHS[value.lower()]
+
+
+def _page_text(html: str) -> str:
     parser = _TextExtractor()
     parser.feed(html)
-    text = " ".join(parser.parts)
+    return " ".join(parser.parts)
+
+
+def parse_cub_history(html: str, source_url: str = DEFAULT_CUB_SOURCE_URL) -> list[CubPreview]:
+    text = _page_text(html)
     standard_text = re.split(r"CUB\s*/?\s*Desonerado", text, maxsplit=1, flags=re.IGNORECASE)[0]
     month_names = "|".join(MONTHS)
     heading_pattern = re.compile(
@@ -99,10 +109,80 @@ def parse_cub_history(html: str, source_url: str = DEFAULT_CUB_SOURCE_URL) -> li
     return sorted(unique.values(), key=lambda item: item.applicable_month, reverse=True)
 
 
-def fetch_cub_history(url: str = DEFAULT_CUB_SOURCE_URL) -> list[CubPreview]:
+def parse_current_cub(
+    html: str, source_url: str = DEFAULT_CUB_CURRENT_SOURCE_URL
+) -> CubPreview:
+    text = _page_text(html)
+    residential_match = re.search(
+        r"Residencial\s+M[ée]dio(?P<block>.*?)(?:Comercial\s+M[ée]dio|$)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if residential_match is None:
+        raise CubFetchError('No se encontró el bloque "Residencial Médio" en la fuente mensual.')
+
+    block = residential_match.group("block")
+    month_token = rf"(\d{{1,2}}|{'|'.join(MONTHS)})"
+    reference_match = re.search(
+        rf"M[eê]s\s+de\s+Refer[êe]ncia\s*:\s*{month_token}\s*/\s*(20\d{{2}})",
+        block,
+        flags=re.IGNORECASE,
+    )
+    applicable_match = re.search(
+        rf"Para\s+ser\s+usado\s+em\s*:\s*{month_token}\s*/\s*(20\d{{2}})",
+        block,
+        flags=re.IGNORECASE,
+    )
+    value_match = re.search(r"R\$\s*([\d.]+,\d{2})", block, flags=re.IGNORECASE)
+    variation_match = re.search(r"([+\-–]?\s*[\d.,]+)\s*%", block)
+    if reference_match is None or applicable_match is None or value_match is None:
+        raise CubFetchError(
+            'El bloque "Residencial Médio" no contiene un mes y valor CUB válidos.'
+        )
+
+    reference_month, reference_year = reference_match.groups()
+    applicable_month, applicable_year = applicable_match.groups()
+    variation = None
+    if variation_match:
+        normalized = variation_match.group(1).replace(" ", "").replace("–", "-")
+        variation = _br_decimal(normalized.lstrip("+"))
+    return CubPreview(
+        reference_month=datetime.date(int(reference_year), _month_number(reference_month), 1),
+        applicable_month=datetime.date(
+            int(applicable_year), _month_number(applicable_month), 1
+        ),
+        value=_br_decimal(value_match.group(1)),
+        monthly_variation=variation,
+        source_url=source_url,
+    )
+
+
+def _fetch_html(url: str, *, bypass_cache: bool = False) -> str:
     try:
-        response = requests.get(url, timeout=15)
+        request_kwargs = {"timeout": 15}
+        if bypass_cache:
+            # This WordPress page can serve an outdated full-page cache even after
+            # its visible monthly card has been updated.
+            request_kwargs["params"] = {"_": int(time.time())}
+            request_kwargs["headers"] = {"User-Agent": "Mozilla/5.0 RatesMonitor/0.1"}
+        response = requests.get(url, **request_kwargs)
         response.raise_for_status()
     except requests.RequestException as exc:
         raise CubFetchError(f"No se pudo consultar la fuente CUB: {exc}") from exc
-    return parse_cub_history(response.text, source_url=url)
+    return response.text
+
+
+def fetch_cub_history(
+    url: str = DEFAULT_CUB_SOURCE_URL,
+    current_url: str | None = None,
+) -> list[CubPreview]:
+    history = parse_cub_history(_fetch_html(url), source_url=url)
+    if current_url is None:
+        return history
+
+    current = parse_current_cub(
+        _fetch_html(current_url, bypass_cache=True), source_url=current_url
+    )
+    combined = {item.applicable_month: item for item in history}
+    combined[current.applicable_month] = current
+    return sorted(combined.values(), key=lambda item: item.applicable_month, reverse=True)

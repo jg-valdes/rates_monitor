@@ -533,7 +533,8 @@ in `settings.py`.
 | `OER_TARGET_USAGE_RATIO` | `0.95` | Fraction of the monthly quota the app may target. |
 | `OER_MIN_REQUEST_INTERVAL_MINUTES` | `240` | Cooldown between non-forced OER requests. |
 | `OER_ALLOW_HISTORICAL` | `False` | Enables paid historical OER endpoints when explicitly set. |
-| `CUB_SOURCE_URL` | Sinduscon BC CUB page | Source displayed and used by assisted CUB previews. |
+| `CUB_SOURCE_URL` | Sinduscon BC historical CUB page | Prior months used by assisted CUB previews. |
+| `CUB_CURRENT_SOURCE_URL` | Sinduscon Florianópolis monthly CUB page | Current "Residencial Médio" value used by assisted CUB previews. |
 | `DATA_DIR` | *(project root)* | Directory for `db.sqlite3`. Docker Compose sets this to `/app/data`. |
 
 When `DEBUG=False`, Django automatically sets `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`

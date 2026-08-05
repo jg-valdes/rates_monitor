@@ -2,7 +2,7 @@ import datetime
 import json
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, call, patch
 
 import pytest
 import requests
@@ -17,7 +17,12 @@ from rates.models import (
     PaymentTransaction,
     PropertyPurchasePlan,
 )
-from rates.services.cub_fetcher import CubFetchError, fetch_cub_history, parse_cub_history
+from rates.services.cub_fetcher import (
+    CubFetchError,
+    fetch_cub_history,
+    parse_cub_history,
+    parse_current_cub,
+)
 from rates.services.payment_calculations import (
     active_payment_total,
     add_months,
@@ -175,6 +180,42 @@ class TestCubParser:
         with pytest.raises(CubFetchError):
             parse_cub_history("<html>no index here</html>")
 
+    def test_parses_residential_average_from_current_month_card(self):
+        html = """
+        <section>
+          <h3>Residencial Médio</h3>
+          <p>Mês de Referência:</p><p>Julho/2026</p>
+          <p>Para ser usado em:</p><p>Agosto/2026</p>
+          <strong>R$3.151,24</strong><span>0,95%</span>
+        </section>
+        <section>
+          <h3>Comercial Médio</h3>
+          <p>Mês de Referência: Julho/2026</p>
+          <p>Para ser usado em: Agosto/2026</p>
+          <strong>R$3.353,70</strong><span>0,90%</span>
+        </section>
+        """
+        source_url = "https://official.example/cub-current"
+
+        result = parse_current_cub(html, source_url)
+
+        assert result.reference_month == datetime.date(2026, 7, 1)
+        assert result.applicable_month == datetime.date(2026, 8, 1)
+        assert result.value == Decimal("3151.24")
+        assert result.monthly_variation == Decimal("0.95")
+        assert result.source_url == source_url
+
+    def test_current_parser_does_not_fall_back_to_commercial_card(self):
+        html = """
+        <h3>Comercial Médio</h3>
+        <p>Mês de Referência: Julho/2026</p>
+        <p>Para ser usado em: Agosto/2026</p>
+        <strong>R$3.353,70</strong><span>0,90%</span>
+        """
+
+        with pytest.raises(CubFetchError, match="Residencial Médio"):
+            parse_current_cub(html)
+
     def test_skips_empty_future_month_without_stealing_the_next_value(self):
         html = """
         <h2>CUB/2006 - ANO 2026</h2>
@@ -202,6 +243,46 @@ class TestCubParser:
 
         get.assert_called_once_with(source_url, timeout=15)
         assert results[0].source_url == source_url
+
+    def test_fetch_merges_current_card_with_historical_months(self):
+        historical_response = SimpleNamespace(
+            text="<h3>CUB / Julho 2026</h3><p>R$ 3.121,62</p>",
+            raise_for_status=lambda: None,
+        )
+        current_response = SimpleNamespace(
+            text="""
+                <h3>Residencial Médio</h3>
+                <p>Mês de Referência: Julho/2026</p>
+                <p>Para ser usado em: Agosto/2026</p>
+                <strong>R$ 3.151,24</strong><span>0,95%</span>
+                <h3>Comercial Médio</h3>
+            """,
+            raise_for_status=lambda: None,
+        )
+        history_url = "https://official.example/cub-history"
+        current_url = "https://official.example/cub-current"
+        with patch(
+            "rates.services.cub_fetcher.requests.get",
+            side_effect=[historical_response, current_response],
+        ) as get:
+            results = fetch_cub_history(history_url, current_url)
+
+        assert [item.applicable_month for item in results] == [
+            datetime.date(2026, 8, 1),
+            datetime.date(2026, 7, 1),
+        ]
+        assert results[0].value == Decimal("3151.24")
+        assert results[0].source_url == current_url
+        assert results[1].source_url == history_url
+        assert get.call_args_list == [
+            call(history_url, timeout=15),
+            call(
+                current_url,
+                timeout=15,
+                params={"_": ANY},
+                headers={"User-Agent": "Mozilla/5.0 RatesMonitor/0.1"},
+            ),
+        ]
 
     def test_fetch_wraps_network_failures(self):
         with (

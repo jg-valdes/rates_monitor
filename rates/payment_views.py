@@ -24,7 +24,12 @@ from rates.models import (
     PaymentTransaction,
     PropertyPurchasePlan,
 )
-from rates.services.cub_fetcher import DEFAULT_CUB_SOURCE_URL, CubFetchError, fetch_cub_history
+from rates.services.cub_fetcher import (
+    DEFAULT_CUB_CURRENT_SOURCE_URL,
+    DEFAULT_CUB_SOURCE_URL,
+    CubFetchError,
+    fetch_cub_history,
+)
 from rates.services.payment_calculations import (
     active_payment_total,
     add_months,
@@ -193,8 +198,11 @@ def _save_cub(plan, form):
 def cub_preview(request, plan_id):
     plan = get_object_or_404(PropertyPurchasePlan, pk=plan_id)
     source_url = getattr(settings, "CUB_SOURCE_URL", DEFAULT_CUB_SOURCE_URL)
+    current_source_url = getattr(
+        settings, "CUB_CURRENT_SOURCE_URL", DEFAULT_CUB_CURRENT_SOURCE_URL
+    )
     try:
-        found = fetch_cub_history(source_url)
+        found = fetch_cub_history(source_url, current_source_url)
         existing = {
             item.applicable_month: item
             for item in CubIndexValue.objects.filter(series=plan.cub_series)
@@ -228,9 +236,19 @@ def cub_preview(request, plan_id):
                         "delta_percent": delta_percent,
                     }
                 )
-        context = {"plan": plan, "previews": previews, "source_url": source_url}
+        context = {
+            "plan": plan,
+            "previews": previews,
+            "source_url": current_source_url,
+            "history_source_url": source_url,
+        }
     except CubFetchError as exc:
-        context = {"plan": plan, "cub_preview_error": str(exc), "source_url": source_url}
+        context = {
+            "plan": plan,
+            "cub_preview_error": str(exc),
+            "source_url": current_source_url,
+            "history_source_url": source_url,
+        }
     return render(request, "rates/partials/cub_preview.html", context)
 
 
@@ -790,6 +808,9 @@ def _workspace_context(plan, **overrides):
     monthly_rows = [row for row in rows if row["kind"] == PaymentSeries.Kind.MONTHLY]
     special_rows = [row for row in rows if row["kind"] != PaymentSeries.Kind.MONTHLY]
     cub_fetch_url = getattr(settings, "CUB_SOURCE_URL", DEFAULT_CUB_SOURCE_URL)
+    cub_current_fetch_url = getattr(
+        settings, "CUB_CURRENT_SOURCE_URL", DEFAULT_CUB_CURRENT_SOURCE_URL
+    )
     context = {
         "plan": plan,
         "plans": PropertyPurchasePlan.objects.filter(archived_at__isnull=True),
@@ -813,6 +834,7 @@ def _workspace_context(plan, **overrides):
         "cub_values": cub_values[:24],
         "latest_cub": latest_cub,
         "cub_fetch_url": cub_fetch_url,
+        "cub_current_fetch_url": cub_current_fetch_url,
         "cub_source_url": latest_cub.source_url or cub_fetch_url,
         "chart_data": json.dumps(chart_data),
         "chart_start": chart_start,
