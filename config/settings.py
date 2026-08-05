@@ -49,6 +49,10 @@ RUN_SCHEDULER = config("RUN_SCHEDULER", default=False, cast=bool)
 # Official CUB-SC page used by the assisted payment-index preview. Values are
 # never saved without explicit confirmation in the UI.
 CUB_SOURCE_URL = config("CUB_SOURCE_URL", default="https://www.sindusconbc.com.br/cub/")
+CUB_CURRENT_SOURCE_URL = config(
+    "CUB_CURRENT_SOURCE_URL",
+    default="https://sinduscon-fpolis.org.br/servico/cub-mensal/",
+)
 
 # ── Telegram alerts ───────────────────────────────────────────────────────────
 # Both must be set for alerts to be sent. Leave empty to disable.

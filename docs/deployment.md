@@ -74,15 +74,17 @@ EXCHANGE_RATE_SOURCE=awesomeapi
 # OPENEXCHANGERATES_APP_ID=
 
 CUB_SOURCE_URL=https://www.sindusconbc.com.br/cub/
+CUB_CURRENT_SOURCE_URL=https://sinduscon-fpolis.org.br/servico/cub-mensal/
 
 DJANGO_SUPERUSER_USERNAME=admin
 DJANGO_SUPERUSER_EMAIL=admin@example.com
 DJANGO_SUPERUSER_PASSWORD=<strong-password>
 ```
 
-`CUB_SOURCE_URL` is stored with confirmed CUB values and displayed as a direct
-link in the Vivienda workspace. The assisted importer never saves a value until
-it is explicitly confirmed.
+`CUB_SOURCE_URL` provides prior months. `CUB_CURRENT_SOURCE_URL` provides the
+current month's "Residencial Médio" card. The source used for each confirmed
+value is stored and displayed in the Vivienda workspace. The assisted importer
+never saves a value until it is explicitly confirmed.
 
 Do not commit `.env` or copy its secrets into issue reports or logs.
 
@@ -228,11 +230,11 @@ Do not start `manage.py run_scheduler` beside the production container.
 ### CUB import fails
 
 Open the exact URL shown in the Vivienda workspace. Confirm that
-`CUB_SOURCE_URL` is reachable from both the browser and the container:
+both CUB source URLs are reachable from the browser and the container:
 
 ```bash
 docker compose exec web uv run python -c \
-  "import os, requests; url=os.environ['CUB_SOURCE_URL']; response=requests.get(url, timeout=15); print(response.status_code, url)"
+  "import os, requests; [(lambda r, u: print(r.status_code, u))(requests.get(u, timeout=15), u) for u in (os.environ['CUB_SOURCE_URL'], os.environ['CUB_CURRENT_SOURCE_URL'])]"
 ```
 
 The failure does not modify saved CUB values. Enter a verified value manually

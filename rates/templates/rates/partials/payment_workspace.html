@@ -126,12 +126,14 @@
       </div>
       <p class="mt-4 text-xs text-gray-600 leading-relaxed">Las cuotas futuras usan este valor como proyección hasta que confirmes el CUB exacto del mes.</p>
       <div class="mt-3 rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2">
-        <p class="text-[10px] uppercase tracking-widest text-gray-600">URL consultada por el importador</p>
-        <a href="{{ cub_fetch_url }}" target="_blank" rel="noopener noreferrer"
+        <p class="text-[10px] uppercase tracking-widest text-gray-600">URL consultada por el importador · mes vigente</p>
+        <a href="{{ cub_current_fetch_url }}" target="_blank" rel="noopener noreferrer"
            class="mt-1 block break-all text-xs text-indigo-300 hover:text-indigo-200 hover:underline">
-          {{ cub_fetch_url }} ↗
+          {{ cub_current_fetch_url }} ↗
         </a>
-        {% if cub_source_url != cub_fetch_url %}<p class="mt-2 text-[10px] uppercase tracking-widest text-gray-600">Fuente del valor vigente</p><a href="{{ cub_source_url }}" target="_blank" rel="noopener noreferrer" class="mt-1 block break-all text-xs text-indigo-300 hover:underline">{{ cub_source_url }} ↗</a>{% endif %}
+        <p class="mt-2 text-[10px] uppercase tracking-widest text-gray-600">Histórico</p>
+        <a href="{{ cub_fetch_url }}" target="_blank" rel="noopener noreferrer" class="mt-1 block break-all text-xs text-indigo-300 hover:underline">{{ cub_fetch_url }} ↗</a>
+        {% if cub_source_url != cub_fetch_url and cub_source_url != cub_current_fetch_url %}<p class="mt-2 text-[10px] uppercase tracking-widest text-gray-600">Fuente del valor vigente guardado</p><a href="{{ cub_source_url }}" target="_blank" rel="noopener noreferrer" class="mt-1 block break-all text-xs text-indigo-300 hover:underline">{{ cub_source_url }} ↗</a>{% endif %}
         <p class="mt-1 text-[10px] text-gray-700">Abre la publicación original para verificar manualmente el valor antes de confirmarlo.</p>
       </div>
       <div id="cub-assisted-preview" class="mt-4"></div>

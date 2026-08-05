@@ -9,7 +9,10 @@
       <input type="checkbox" checked onchange="this.form.querySelectorAll('[name=selected_month]').forEach(item => item.checked = this.checked)" class="rounded border-gray-700 bg-gray-950 text-indigo-500">
       Seleccionar todos
     </label>
-    <a href="{{ source_url }}" target="_blank" rel="noopener" class="text-[10px] text-gray-500 hover:text-gray-300">Ver fuente ↗</a>
+    <span class="flex gap-3">
+      <a href="{{ history_source_url }}" target="_blank" rel="noopener" class="text-[10px] text-gray-500 hover:text-gray-300">Histórico ↗</a>
+      <a href="{{ source_url }}" target="_blank" rel="noopener" class="text-[10px] text-gray-500 hover:text-gray-300">Mes vigente ↗</a>
+    </span>
   </div>
   <div class="max-h-72 space-y-2 overflow-auto">
   {% for preview in previews %}
