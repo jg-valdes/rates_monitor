@@ -75,14 +75,19 @@ EXCHANGE_RATE_SOURCE=awesomeapi
 
 CUB_SOURCE_URL=https://www.sindusconbc.com.br/cub/
 CUB_CURRENT_SOURCE_URL=https://sinduscon-fpolis.org.br/servico/cub-mensal/
+CUB_SHEET_URL=https://docs.google.com/spreadsheets/d/1_XfU1kxOT36xot8o6iRMBOPZ63VYNhvTtXHFMw4Hr2E/export?format=xlsx
 
 DJANGO_SUPERUSER_USERNAME=admin
 DJANGO_SUPERUSER_EMAIL=admin@example.com
 DJANGO_SUPERUSER_PASSWORD=<strong-password>
 ```
 
-`CUB_SOURCE_URL` provides prior months. `CUB_CURRENT_SOURCE_URL` provides the
-current month's "Residencial Médio" card. The source used for each confirmed
+`CUB_SOURCE_URL` provides prior months. `CUB_SHEET_URL` is the preferred source
+for the current month: it is the "Tabelas CUB > CUB RESIDENCIAL MÉDIO" Google
+Sheet, updated on the 1st, whose table is an image read with the `tesseract-ocr`
+package installed in the Docker image. `CUB_CURRENT_SOURCE_URL` is the monthly
+"Residencial Médio" card, used when the sheet fails or still shows an earlier
+month. The source used for each confirmed
 value is stored and displayed in the Vivienda workspace. The assisted importer
 never saves a value until it is explicitly confirmed.
 
@@ -230,11 +235,14 @@ Do not start `manage.py run_scheduler` beside the production container.
 ### CUB import fails
 
 Open the exact URL shown in the Vivienda workspace. Confirm that
-both CUB source URLs are reachable from the browser and the container:
+the CUB source URLs are reachable from the browser and the container, and that
+tesseract can read the sheet:
 
 ```bash
 docker compose exec web uv run python -c \
-  "import os, requests; [(lambda r, u: print(r.status_code, u))(requests.get(u, timeout=15), u) for u in (os.environ['CUB_SOURCE_URL'], os.environ['CUB_CURRENT_SOURCE_URL'])]"
+  "import os, requests; [(lambda r, u: print(r.status_code, u))(requests.get(u, timeout=15), u) for u in (os.environ['CUB_SOURCE_URL'], os.environ['CUB_CURRENT_SOURCE_URL'], os.environ['CUB_SHEET_URL'])]"
+docker compose exec web uv run python -c \
+  "import django, os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings'); django.setup(); from django.conf import settings; from rates.services.cub_fetcher import fetch_cub_sheet; print(fetch_cub_sheet(settings.CUB_SHEET_URL))"
 ```
 
 The failure does not modify saved CUB values. Enter a verified value manually

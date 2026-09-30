@@ -13,6 +13,14 @@
     .htmx-request .htmx-indicator,
     .htmx-request.htmx-indicator { opacity: 1; }
     .htmx-request .htmx-stable { opacity: 0.6; }
+    /* Loading panels that take no space while idle. */
+    .htmx-loading { display: none; }
+    .htmx-request.htmx-loading { display: block; }
+    .progress-indeterminate { animation: progress-indeterminate 1.2s ease-in-out infinite; }
+    @keyframes progress-indeterminate {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(250%); }
+    }
     .money-input input { padding-left: 2.75rem; }
     input[type="date"],
     input[type="month"] {
