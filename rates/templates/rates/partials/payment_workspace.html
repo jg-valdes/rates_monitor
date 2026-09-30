@@ -120,7 +120,9 @@
           <p class="text-xs text-gray-600">Uso {{ latest_cub.applicable_month|date:'m/Y' }} · base contractual R$ {{ plan.base_cub_value|floatformat:2 }}</p>
         </div>
         <button hx-get="{% url 'rates:cub_preview' plan.pk %}" hx-target="#cub-assisted-preview"
-                class="shrink-0 text-xs px-3 py-2 rounded-lg bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20">
+                hx-indicator="#cub-preview-loading" hx-disabled-elt="this"
+                hx-on::before-request="document.getElementById('cub-assisted-preview').innerHTML = ''"
+                class="shrink-0 text-xs px-3 py-2 rounded-lg bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 disabled:cursor-wait disabled:opacity-50">
           Consultar fuente
         </button>
       </div>
@@ -135,6 +137,13 @@
         <a href="{{ cub_fetch_url }}" target="_blank" rel="noopener noreferrer" class="mt-1 block break-all text-xs text-indigo-300 hover:underline">{{ cub_fetch_url }} ↗</a>
         {% if cub_source_url != cub_fetch_url and cub_source_url != cub_current_fetch_url %}<p class="mt-2 text-[10px] uppercase tracking-widest text-gray-600">Fuente del valor vigente guardado</p><a href="{{ cub_source_url }}" target="_blank" rel="noopener noreferrer" class="mt-1 block break-all text-xs text-indigo-300 hover:underline">{{ cub_source_url }} ↗</a>{% endif %}
         <p class="mt-1 text-[10px] text-gray-700">Abre la publicación original para verificar manualmente el valor antes de confirmarlo.</p>
+      </div>
+      <div id="cub-preview-loading" class="htmx-loading mt-4 rounded-xl border border-indigo-900/60 bg-indigo-500/5 px-3 py-3" role="status" aria-live="polite">
+        <div class="flex items-center gap-2 text-xs text-indigo-300">
+          <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-25"/><path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+          Consultando fuentes CUB…
+        </div>
+        <div class="mt-2 h-1 overflow-hidden rounded-full bg-gray-800"><div class="progress-indeterminate h-full w-2/5 rounded-full bg-indigo-400"></div></div>
       </div>
       <div id="cub-assisted-preview" class="mt-4"></div>
       <details class="mt-auto pt-4 border-t border-gray-800 group">
