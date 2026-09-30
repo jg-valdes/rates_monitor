@@ -26,6 +26,7 @@ from rates.models import (
 )
 from rates.services.cub_fetcher import (
     DEFAULT_CUB_CURRENT_SOURCE_URL,
+    DEFAULT_CUB_SHEET_URL,
     DEFAULT_CUB_SOURCE_URL,
     CubFetchError,
     fetch_cub_history,
@@ -199,8 +200,9 @@ def cub_preview(request, plan_id):
     plan = get_object_or_404(PropertyPurchasePlan, pk=plan_id)
     source_url = getattr(settings, "CUB_SOURCE_URL", DEFAULT_CUB_SOURCE_URL)
     current_source_url = getattr(settings, "CUB_CURRENT_SOURCE_URL", DEFAULT_CUB_CURRENT_SOURCE_URL)
+    sheet_url = getattr(settings, "CUB_SHEET_URL", DEFAULT_CUB_SHEET_URL)
     try:
-        found = fetch_cub_history(source_url, current_source_url)
+        found = fetch_cub_history(source_url, current_source_url, sheet_url)
         existing = {
             item.applicable_month: item
             for item in CubIndexValue.objects.filter(series=plan.cub_series)

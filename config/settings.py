@@ -53,6 +53,13 @@ CUB_CURRENT_SOURCE_URL = config(
     "CUB_CURRENT_SOURCE_URL",
     default="https://sinduscon-fpolis.org.br/servico/cub-mensal/",
 )
+# Google Sheet behind "Tabelas CUB > CUB RESIDENCIAL MÉDIO". Preferred over the
+# monthly card because it is updated on the 1st; read with tesseract OCR.
+CUB_SHEET_URL = config(
+    "CUB_SHEET_URL",
+    default="https://docs.google.com/spreadsheets/d/"
+    "1_XfU1kxOT36xot8o6iRMBOPZ63VYNhvTtXHFMw4Hr2E/export?format=xlsx",
+)
 
 # ── Telegram alerts ───────────────────────────────────────────────────────────
 # Both must be set for alerts to be sent. Leave empty to disable.
